@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>SGCES — Organização</title>
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <h1>SGCES</h1>
+      <p>Sistema de Gerenciamento de Cerimonial em Eventos Sociais</p>
+    </div>
+    <nav class="nav" id="mainNav">
+      <button class="active" data-view="dashboard">Dashboard</button>
+      <button data-view="evento">Evento</button>
+      <button data-view="convidados">Convidados</button>
+      <button data-view="mesas">Mesas</button>
+      <button data-view="croqui">Croqui</button>
+      <button data-view="cerimonial">Cerimonial</button>
+      <button data-view="nominata">Nominata</button>
+      <button data-view="conteudos">Conteúdos</button>
+      <button data-view="acessos">Acessos</button>
+    </nav>
+    <div class="sidebar-footer">SGCES v1.0.0</div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="topbar-left">
+        <strong>Evento:</strong>
+        <select id="eventSelect" class="search-input" style="min-width:260px"></select>
+      </div>
+      <div class="topbar-right">
+        <span id="syncStatus" class="small muted">Pronto</span>
+        <button id="refreshBtn" class="btn btn-sm">Atualizar</button>
+      </div>
+    </header>
+
+    <div class="content">
+      <section data-section="dashboard"></section>
+      <section data-section="evento" class="hidden"></section>
+      <section data-section="convidados" class="hidden"></section>
+      <section data-section="mesas" class="hidden"></section>
+      <section data-section="croqui" class="hidden"></section>
+      <section data-section="cerimonial" class="hidden"></section>
+      <section data-section="nominata" class="hidden"></section>
+      <section data-section="conteudos" class="hidden"></section>
+      <section data-section="acessos" class="hidden"></section>
+    </div>
+  </main>
+</div>
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/common.js"></script>
+<script src="js/organizacao.js"></script>
+</body>
+</html>
