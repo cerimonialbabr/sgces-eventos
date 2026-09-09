@@ -118,7 +118,7 @@ tr:hover td{background:#fbfdff}
 .floor-table.u{border-radius:10px;border-top-color:transparent;background:transparent;box-shadow:none}
 .floor-table.dragging{cursor:grabbing;z-index:10;box-shadow:0 12px 28px rgba(15,23,42,.18)}
 .floor-table .occ{display:block;font-size:.72rem;font-weight:700;margin-top:2px;color:#52708f}
-.floor-table.highlight{outline:5px solid rgba(22,163,74,.25);background:#dcfce7;border-color:#16a34a;color:#14532d}
+.floor-table.highlight{outline:5px solid rgba(22,163,74,.25);background:#dcfce7 !important;border-color:#16a34a !important;color:#14532d !important}
 .floor-table.full{background:#fff1f2;border-color:#e11d48;color:#881337}
 
 /* composição da mesa */
@@ -228,7 +228,7 @@ tr:hover td{background:#fbfdff}
   function call(action, payload, timeoutMs){
     payload = payload || {};
     timeoutMs = timeoutMs || 25000;
-    if(!readyApi()) return Promise.reject(new Error('Configure a URL do Web App em js/config.js.'));
+    if(!readyApi()) return Promise.reject(new Error('Configure a URL do Web App em config.js.'));
 
     return new Promise((resolve,reject)=>{
       const id = 'sgces_cb_' + Date.now() + '_' + (++seq);
@@ -335,7 +335,12 @@ tr:hover td{background:#fbfdff}
 
   function renderFloor(container,tables,opts){
     opts=opts||{}; container.innerHTML=''; container.classList.add(opts.tv?'tv-floor':'floor');
+    const bg=opts.backgroundUrl||'';
+    container.style.backgroundImage=bg?`url("${driveImage(bg).replace(/"/g,'%22')}")`:'';
+    container.style.backgroundSize='contain'; container.style.backgroundRepeat='no-repeat'; container.style.backgroundPosition='center';
     const highlighted=String(opts.highlightTableId||'');
+    const rect=container.getBoundingClientRect();
+    const ratio=(rect.width&&rect.height)?rect.width/rect.height:(16/9);
     (tables||[]).forEach(t=>{
       const el=document.createElement('div');
       const shape=String(t.FORMATO||'REDONDA').toUpperCase();
@@ -343,7 +348,8 @@ tr:hover td{background:#fbfdff}
       if(String(t.ID_MESA)===highlighted) el.classList.add('highlight');
       if(num(t.VAGAS,1)<=0 && num(t.CAPACIDADE)>0) el.classList.add('full');
       el.dataset.id=t.ID_MESA;
-      const w=num(t.W,shape==='RETANGULAR'?18:10), h=num(t.H,shape==='RETANGULAR'?8:10);
+      const w=num(t.W,shape==='RETANGULAR'?18:10);
+      const h=shape==='REDONDA'?w*ratio:num(t.H,shape==='RETANGULAR'?8:10);
       el.style.left=num(t.X,50)+'%'; el.style.top=num(t.Y,50)+'%'; el.style.width=w+'%'; el.style.height=h+'%';
       el.style.transform=`translate(-50%,-50%) rotate(${num(t.ROTACAO,0)}deg)`;
       const occ = typeof t.OCUPACAO!=='undefined' ? `<span class="occ">${num(t.OCUPACAO)}/${num(t.CAPACIDADE)}${typeof t.VAGAS!=='undefined'?' • '+num(t.VAGAS)+' vaga(s)':''}</span>` : '';
@@ -404,7 +410,7 @@ tr:hover td{background:#fbfdff}
   document.addEventListener('DOMContentLoaded',()=>{tick();setInterval(tick,1000);load();setInterval(load,SGCES_CONFIG.POLL_TV_MS||10000);});
   async function load(){try{data=await A.call('tvData',{eventId});render();}catch(e){console.error(e);}}
   function tick(){U.$('#clock').textContent=new Intl.DateTimeFormat('pt-BR',{dateStyle:'short',timeStyle:'medium'}).format(new Date());}
-  function render(){if(!data)return;const e=data.event||{},s=data.stats||{};U.$('#tvTitle').textContent=e.NOME||'SGCES';if(e.BANNER_URL){U.$('.tv-header').style.backgroundImage=`linear-gradient(rgba(16,45,82,.84),rgba(16,45,82,.84)),url("${U.driveImage(e.BANNER_URL).replace(/"/g,'%22')}")`;U.$('.tv-header').style.backgroundSize='cover';U.$('.tv-header').style.backgroundPosition='center';}U.$('#tvSub').textContent=[e.DATA,e.HORA_INICIO,e.LOCAL].filter(Boolean).join(' • ');U.$('#tvStats').textContent=`Presentes: ${U.num(s.present)} / ${U.num(s.totalGuests)} • Vagas: ${U.num(s.freeSeats)}`;U.renderFloor(U.$('#tvFloor'),data.tables||[],{tv:true});U.$('#arrivals').innerHTML=(data.latest||[]).length?(data.latest||[]).map(x=>`<div class="tv-arrival"><span><strong>${U.esc([x.POSTO_GRAD,x.NOME].filter(Boolean).join(' '))}</strong></span><span>${U.fmtTime(x.HORARIO_CHECKIN)}</span></div>`).join(''):'<p class="muted">Aguardando confirmações de presença.</p>';U.$('#tvSponsors').innerHTML=(data.sponsors||[]).map(s=>`${s.URL_SITE?`<a href="${U.esc(s.URL_SITE)}">`:'<span>'}<img src="${U.esc(U.driveImage(s.LOGO_URL))}" alt="${U.esc(s.NOME)}">${s.URL_SITE?'</a>':'</span>'}`).join('');}
+  function render(){if(!data)return;const e=data.event||{},s=data.stats||{};U.$('#tvTitle').textContent=e.NOME||'SGCES';if(e.BANNER_URL){U.$('.tv-header').style.backgroundImage=`linear-gradient(rgba(16,45,82,.84),rgba(16,45,82,.84)),url("${U.driveImage(e.BANNER_URL).replace(/"/g,'%22')}")`;U.$('.tv-header').style.backgroundSize='cover';U.$('.tv-header').style.backgroundPosition='center';}U.$('#tvSub').textContent=[e.DATA,e.HORARIO,e.LOCAL].filter(Boolean).join(' • ');U.$('#tvStats').textContent=`Presentes: ${U.num(s.present)} / ${U.num(s.totalGuests)} • Vagas: ${U.num(s.freeSeats)}`;U.renderFloor(U.$('#tvFloor'),data.tables||[],{tv:true,backgroundUrl:e.CROQUI_URL});U.$('#arrivals').innerHTML=(data.latest||[]).length?(data.latest||[]).map(x=>`<div class="tv-arrival"><span><strong>${U.esc([x.POSTO_GRAD,x.NOME].filter(Boolean).join(' '))}</strong></span><span>${U.fmtTime(x.HORARIO_CHECKIN)}</span></div>`).join(''):'<p class="muted">Aguardando confirmações de presença.</p>';U.$('#tvSponsors').innerHTML=(data.sponsors||[]).map(s=>`${s.URL_SITE?`<a href="${U.esc(s.URL_SITE)}">`:'<span>'}<img src="${U.esc(U.driveImage(s.LOGO_URL))}" alt="${U.esc(s.NOME)}">${s.URL_SITE?'</a>':'</span>'}`).join('');}
 })();
 
 </script>

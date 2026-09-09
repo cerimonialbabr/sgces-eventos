@@ -112,15 +112,17 @@ tr:hover td{background:#fbfdff}
 /* croqui */
 .floor-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
 .floor-wrap{background:#fff;border:1px solid var(--line);border-radius:16px;padding:12px;overflow:auto}
-.floor{position:relative;min-width:760px;aspect-ratio:16/9;background:linear-gradient(90deg,#f8fafc 24px,transparent 24px),linear-gradient(#f8fafc 24px,transparent 24px);background-size:25px 25px;border:1px dashed #cbd5e1;border-radius:12px;overflow:hidden}
+.floor{position:relative;min-width:760px;aspect-ratio:16/9;background-color:#f8fafc;background-image:linear-gradient(90deg,#eef2f7 1px,transparent 1px),linear-gradient(#eef2f7 1px,transparent 1px);background-size:25px 25px;background-position:center;background-repeat:repeat;border:1px dashed #cbd5e1;border-radius:12px;overflow:hidden}
 .floor-table{position:absolute;transform:translate(-50%,-50%);display:flex;align-items:center;justify-content:center;text-align:center;background:#eef4fb;border:2px solid #7d9fc8;color:#183b68;font-weight:800;user-select:none;touch-action:none;box-shadow:0 5px 14px rgba(15,23,42,.08);cursor:grab}
 .floor-table.round{border-radius:50%}
 .floor-table.rect{border-radius:9px}
 .floor-table.u{border-radius:10px;border-top-color:transparent;background:transparent;box-shadow:none}
 .floor-table.dragging{cursor:grabbing;z-index:10;box-shadow:0 12px 28px rgba(15,23,42,.18)}
 .floor-table .occ{display:block;font-size:.72rem;font-weight:700;margin-top:2px;color:#52708f}
-.floor-table.highlight{outline:5px solid rgba(22,163,74,.25);background:#dcfce7;border-color:#16a34a;color:#14532d}
+.floor-table.highlight{outline:5px solid rgba(22,163,74,.25);background:#dcfce7 !important;border-color:#16a34a !important;color:#14532d !important}
 .floor-table.full{background:#fff1f2;border-color:#e11d48;color:#881337}
+.floor-table .resize-handle{position:absolute;right:-7px;bottom:-7px;width:17px;height:17px;border-radius:50%;background:#173f74;border:2px solid #fff;box-shadow:0 2px 5px rgba(15,23,42,.25);cursor:nwse-resize;z-index:4}
+.floor-table.round .resize-handle{right:2px;bottom:2px}
 
 /* composição da mesa */
 .seating-stage{position:relative;min-height:520px;background:#fbfdff;border:1px solid var(--line);border-radius:16px;overflow:auto}
@@ -220,7 +222,7 @@ tr:hover td{background:#fbfdff}
       <button data-view="conteudos">Conteúdos</button>
       <button data-view="acessos">Acessos</button>
     </nav>
-    <div class="sidebar-footer">SGCES v1.1.0</div>
+    <div class="sidebar-footer">SGCES v1.2.0</div>
   </aside>
 
   <main class="main">
@@ -269,7 +271,7 @@ tr:hover td{background:#fbfdff}
   function call(action, payload, timeoutMs){
     payload = payload || {};
     timeoutMs = timeoutMs || 25000;
-    if(!readyApi()) return Promise.reject(new Error('Configure a URL do Web App em js/config.js.'));
+    if(!readyApi()) return Promise.reject(new Error('Configure a URL do Web App em config.js.'));
 
     return new Promise((resolve,reject)=>{
       const id = 'sgces_cb_' + Date.now() + '_' + (++seq);
@@ -376,19 +378,24 @@ tr:hover td{background:#fbfdff}
 
   function renderFloor(container,tables,opts){
     opts=opts||{}; container.innerHTML=''; container.classList.add(opts.tv?'tv-floor':'floor');
+    const bg=String(opts.backgroundUrl||'').trim();
+    if(bg){container.style.backgroundImage=`url("${driveImage(bg).replace(/"/g,'%22')}")`;container.style.backgroundSize='contain';container.style.backgroundPosition='center';container.style.backgroundRepeat='no-repeat';}
+    else{container.style.backgroundImage='';container.style.backgroundSize='';container.style.backgroundPosition='';container.style.backgroundRepeat='';}
     const highlighted=String(opts.highlightTableId||'');
+    const ratio=(container.clientWidth&&container.clientHeight)?container.clientWidth/container.clientHeight:(16/9);
     (tables||[]).forEach(t=>{
       const el=document.createElement('div');
       const shape=String(t.FORMATO||'REDONDA').toUpperCase();
       el.className='floor-table '+(shape==='RETANGULAR'?'rect':shape==='U'?'u':'round');
       if(String(t.ID_MESA)===highlighted) el.classList.add('highlight');
       if(num(t.VAGAS,1)<=0 && num(t.CAPACIDADE)>0) el.classList.add('full');
-      el.dataset.id=t.ID_MESA;
-      const w=num(t.W,shape==='RETANGULAR'?18:10), h=num(t.H,shape==='RETANGULAR'?8:10);
+      el.dataset.id=t.ID_MESA; el.dataset.shape=shape;
+      const w=num(t.W,shape==='RETANGULAR'?18:10);
+      const h=shape==='REDONDA'?w*ratio:num(t.H,shape==='RETANGULAR'?8:10);
       el.style.left=num(t.X,50)+'%'; el.style.top=num(t.Y,50)+'%'; el.style.width=w+'%'; el.style.height=h+'%';
       el.style.transform=`translate(-50%,-50%) rotate(${num(t.ROTACAO,0)}deg)`;
       const occ = typeof t.OCUPACAO!=='undefined' ? `<span class="occ">${num(t.OCUPACAO)}/${num(t.CAPACIDADE)}${typeof t.VAGAS!=='undefined'?' • '+num(t.VAGAS)+' vaga(s)':''}</span>` : '';
-      el.innerHTML=`<div>${esc(t.NOME||('Mesa '+t.NUMERO))}${occ}</div>`;
+      el.innerHTML=`<div>${esc(t.NOME||('Mesa '+t.NUMERO))}${occ}</div>${opts.editor?'<span class="resize-handle" title="Redimensionar"></span>':''}`;
       if(opts.onClick) el.addEventListener('click',()=>opts.onClick(t,el));
       container.appendChild(el);
     });
@@ -545,7 +552,7 @@ tr:hover td{background:#fbfdff}
         <div class="card"><h3>Croqui geral</h3><div class="floor-wrap"><div class="floor" id="dashFloor"></div></div></div>
         <div class="card"><h3>Últimas chegadas</h3>${latest.length?`<div class="table-wrap"><table><thead><tr><th>Horário</th><th>Convidado</th><th>Mesa</th></tr></thead><tbody>${latest.map(g=>`<tr><td>${U.fmtTime(g.HORARIO_CHECKIN)}</td><td>${U.esc(U.displayName(g))}</td><td>${U.esc(tableFor(g.MESA_ID)?.NOME||'—')}</td></tr>`).join('')}</tbody></table></div>`:'<p class="muted">Ainda não há check-ins.</p>'}</div>
       </div>`;
-    U.renderFloor(U.$('#dashFloor'),state.data.tables||[],{});
+    U.renderFloor(U.$('#dashFloor'),state.data.tables||[],{backgroundUrl:state.data.event&&state.data.event.CROQUI_URL});
     c.querySelector('[data-open-reception]').onclick=()=>window.open('recepcao.html?evento='+encodeURIComponent(state.eventId),'_blank');
     c.querySelector('[data-open-tv]').onclick=()=>window.open('tv.html?evento='+encodeURIComponent(state.eventId),'_blank');
   }
@@ -558,7 +565,7 @@ tr:hover td{background:#fbfdff}
       <div class="grid grid-2">
         <div class="card"><h3>${U.esc(e.NOME)}</h3><p class="muted">${U.esc(e.SUBTITULO||'')}</p>
           <div class="table-wrap"><table><tbody>
-          <tr><th>Data</th><td>${U.esc(e.DATA||'—')}</td></tr><tr><th>Horário</th><td>${U.esc([e.HORA_INICIO,e.HORA_FIM].filter(Boolean).join(' – ')||'—')}</td></tr><tr><th>Local</th><td>${U.esc(e.LOCAL||'—')}</td></tr><tr><th>Modo padrão</th><td>${U.esc(e.MODO_PADRAO||'—')}</td></tr><tr><th>Status</th><td>${U.badgeStatus(e.STATUS)}</td></tr>
+          <tr><th>Data</th><td>${U.esc(e.DATA||'—')}</td></tr><tr><th>Horário</th><td>${U.esc(e.HORARIO||'—')}</td></tr><tr><th>Local</th><td>${U.esc(e.LOCAL||'—')}</td></tr><tr><th>Modo padrão</th><td>${U.esc(e.MODO_PADRAO||'—')}</td></tr><tr><th>Status</th><td>${U.badgeStatus(e.STATUS)}</td></tr>
           </tbody></table></div>
           <div class="actions" style="margin-top:12px">${String(e.ID_EVENTO)===String(state.activeEventId)?'<span class="badge success">EVENTO ATIVO</span>':(String(e.STATUS).toUpperCase()==='ARQUIVADO'?'<span class="badge">ARQUIVADO</span>':'<button class="btn btn-success" data-activate>Ativar este evento</button>')}${String(e.STATUS).toUpperCase()!=='ARQUIVADO'?'<button class="btn btn-danger" data-archive>Arquivar</button>':''}</div>
         </div>
@@ -577,9 +584,8 @@ tr:hover td{background:#fbfdff}
     const m=U.modal(e.ID_EVENTO?'Editar evento':'Novo evento',`
       <div class="form-grid">
         ${field('Nome','evNome',e.NOME,'text',true)}${field('Subtítulo','evSub',e.SUBTITULO)}
-        ${field('Data','evData',e.DATA,'date')}${field('Local','evLocal',e.LOCAL)}
-        ${field('Hora de início','evIni',e.HORA_INICIO,'time')}${field('Hora de término','evFim',e.HORA_FIM,'time')}
-        ${selectField('Modo padrão','evModo',['FIXO','RESERVA','LIVRE','HIBRIDO'],e.MODO_PADRAO||'HIBRIDO')}
+        ${field('Data','evData',e.DATA,'date')}${field('Horário','evHorario',e.HORARIO,'text')}
+        ${field('Local','evLocal',e.LOCAL)}${selectField('Modo padrão','evModo',['FIXO','RESERVA','LIVRE','HÍBRIDO'],e.MODO_PADRAO||'HÍBRIDO')}
         <div class="field"><label>Status</label><div style="padding:10px 0">${U.badgeStatus(e.STATUS||'RASCUNHO')}</div><div class="small muted">O evento ativo é definido pelo botão “Ativar este evento”. Trocar o evento em edição não altera o evento operacional.</div></div>
         <div class="field" style="grid-column:1/-1"><label>URL do banner</label><input id="evBanner" value="${U.esc(e.BANNER_URL||'')}"></div>
         <div class="field" style="grid-column:1/-1"><label>Observações</label><textarea id="evObs">${U.esc(e.OBSERVACOES||'')}</textarea></div>
@@ -587,7 +593,7 @@ tr:hover td{background:#fbfdff}
     m.querySelector('[data-save]').onclick=async ev=>{
       const btn=ev.currentTarget; U.setBusy(btn,true);
       try{
-        const payload={ID_EVENTO:e.ID_EVENTO||'',NOME:U.$('#evNome',m).value.trim(),SUBTITULO:U.$('#evSub',m).value.trim(),DATA:U.$('#evData',m).value,HORA_INICIO:U.$('#evIni',m).value,HORA_FIM:U.$('#evFim',m).value,LOCAL:U.$('#evLocal',m).value.trim(),MODO_PADRAO:U.$('#evModo',m).value,BANNER_URL:U.$('#evBanner',m).value.trim(),OBSERVACOES:U.$('#evObs',m).value.trim()};
+        const payload={ID_EVENTO:e.ID_EVENTO||'',NOME:U.$('#evNome',m).value.trim(),SUBTITULO:U.$('#evSub',m).value.trim(),DATA:U.$('#evData',m).value,HORARIO:U.$('#evHorario',m).value.trim(),LOCAL:U.$('#evLocal',m).value.trim(),MODO_PADRAO:U.$('#evModo',m).value,BANNER_URL:U.$('#evBanner',m).value.trim(),OBSERVACOES:U.$('#evObs',m).value.trim()};
         if(!payload.NOME) throw new Error('Informe o nome do evento.');
         const r=await A.call('saveEvent',payload); state.eventId=r.event.ID_EVENTO; try{localStorage.setItem('sgces_selected_event',state.eventId);}catch(err){} m.remove(); await bootstrap(); U.toast('Evento salvo.','success');
       }catch(err){U.toast(err.message,'error');}finally{U.setBusy(btn,false);}
@@ -611,9 +617,9 @@ tr:hover td{background:#fbfdff}
   function renderGuestRows(q){
     const root=U.$('#guestTable'); if(!root)return;
     const n=U.normalize(q); let rows=(state.data.guests||[]).filter(g=>!n||U.normalize([g.NOME_COMPLETO,g.NOME_GUERRA,g.POSTO_GRAD,g.CARGO,g.OM_ORGAO,tableFor(g.MESA_ID)?.NOME].join(' ')).includes(n));
-    root.innerHTML=rows.length?`<div class="table-wrap"><table><thead><tr><th>Convidado</th><th>Cargo / OM</th><th>Mesa</th><th>RSVP</th><th>Chegada</th><th>Código</th><th></th></tr></thead><tbody>${rows.map(g=>`<tr>
+    root.innerHTML=rows.length?`<div class="table-wrap"><table><thead><tr><th>Convidado</th><th>Cargo / OM</th><th>Mesa</th><th>RSVP</th><th>Chegada</th><th></th></tr></thead><tbody>${rows.map(g=>`<tr>
       <td><strong>${U.esc(U.displayName(g))}</strong>${U.yes(g.AUTORIDADE_INTERESSE)?'<div><span class="badge info">AUTORIDADE DE INTERESSE</span></div>':''}</td>
-      <td>${U.esc(g.CARGO||'')}<div class="small muted">${U.esc(g.OM_ORGAO||'')}</div></td><td>${U.esc(tableFor(g.MESA_ID)?.NOME||'—')}${g.ASSENTO?`<div class="small muted">${U.esc(g.ASSENTO)}</div>`:''}</td><td>${U.badgeStatus(g.RSVP)}</td><td>${U.badgeStatus(g.CHECKIN)}</td><td class="nowrap">${U.esc(g.CODIGO_CONVIDADO||'')}</td>
+      <td>${U.esc(g.CARGO||'')}<div class="small muted">${U.esc(g.OM_ORGAO||'')}</div></td><td>${U.esc(tableFor(g.MESA_ID)?.NOME||'—')}${g.ASSENTO?`<div class="small muted">${U.esc(g.ASSENTO)}</div>`:''}</td><td>${U.badgeStatus(g.RSVP)}</td><td>${U.badgeStatus(g.CHECKIN)}</td>
       <td class="nowrap"><button class="btn btn-sm" data-edit-g="${U.esc(g.ID_CONVIDADO)}">Editar</button> <button class="btn btn-sm btn-danger" data-del-g="${U.esc(g.ID_CONVIDADO)}">Excluir</button></td></tr>`).join('')}</tbody></table></div>`:'<p class="muted">Nenhum convidado encontrado.</p>';
     root.querySelectorAll('[data-edit-g]').forEach(b=>b.onclick=()=>guestModal(guestById(b.dataset.editG)));
     root.querySelectorAll('[data-del-g]').forEach(b=>b.onclick=()=>{const g=guestById(b.dataset.delG);if(confirm(`Excluir ${g.NOME_COMPLETO}?`))runBusy(async()=>{await A.call('deleteGuest',{guestId:g.ID_CONVIDADO});await loadEvent();U.toast('Convidado excluído.','success');});});
@@ -622,24 +628,25 @@ tr:hover td{background:#fbfdff}
   function guestModal(g){
     g=g||{};
     const tableOptions=['<option value="">Sem mesa</option>'].concat((state.data.tables||[]).map(t=>`<option value="${U.esc(t.ID_MESA)}" ${String(t.ID_MESA)===String(g.MESA_ID)?'selected':''}>${U.esc(t.NOME)} (${U.num(t.OCUPACAO)}/${U.num(t.CAPACIDADE)})</option>`)).join('');
+    const titularOptions=['<option value="">Sem vínculo / titular</option>'].concat((state.data.guests||[]).filter(x=>String(x.ID_CONVIDADO)!==String(g.ID_CONVIDADO)).map(x=>`<option value="${U.esc(x.ID_CONVIDADO)}" ${String(x.ID_CONVIDADO)===String(g.ID_TITULAR)?'selected':''}>${U.esc([x.POSTO_GRAD,x.NOME_COMPLETO].filter(Boolean).join(' '))}</option>`)).join('');
     const m=U.modal(g.ID_CONVIDADO?'Editar convidado':'Adicionar convidado',`
       <div class="form-grid-3">
+        ${field('Posto / Graduação','gPosto',g.POSTO_GRAD)}
         <div class="field" style="grid-column:span 2"><label>Nome completo</label><input id="gNome" value="${U.esc(g.NOME_COMPLETO||'')}"></div>
-        ${field('Nome de guerra','gGuerra',g.NOME_GUERRA)}
-        ${field('Posto / Graduação','gPosto',g.POSTO_GRAD)}${field('Cargo','gCargo',g.CARGO)}${field('OM / Órgão','gOm',g.OM_ORGAO)}
+        ${field('Nome de guerra','gGuerra',g.NOME_GUERRA)}${field('Cargo','gCargo',g.CARGO)}${field('OM / Órgão','gOm',g.OM_ORGAO)}
         ${selectField('Sexo','gSexo',['','MASCULINO','FEMININO'],g.SEXO||'')}${field('Vocativo','gVoc',g.VOCATIVO)}${field('Precedência','gPrec',g.PRECEDENCIA,'number')}
         ${field('E-mail','gEmail',g.EMAIL,'email')}${field('Telefone','gTel',g.TELEFONE)}${selectField('Tipo','gTipo',['TITULAR','ACOMPANHANTE','CONVIDADO'],g.TIPO||'TITULAR')}
-        ${selectField('Autoridade de interesse','gAut',['NAO','SIM'],g.AUTORIDADE_INTERESSE||'NAO')}${selectField('Nível operacional','gNivel',['CONVIDADO','AUTORIDADE','ESPECIAL'],g.NIVEL_INTERESSE||'CONVIDADO')}${selectField('RSVP','gRsvp',['PENDENTE','CONFIRMADO','NÃO COMPARECERÁ'],g.RSVP||'PENDENTE')}
-        <div class="field"><label>Mesa</label><select id="gMesa">${tableOptions}</select></div>${field('Assento / posição','gSeat',g.ASSENTO)}${field('Código do convidado','gCode',g.CODIGO_CONVIDADO)}
+        ${selectField('Autoridade de interesse','gAut',['NAO','SIM'],g.AUTORIDADE_INTERESSE||'NAO')}${selectField('Nível operacional','gNivel',['CONVIDADO','AUTORIDADE','ESPECIAL'],g.NIVEL_INTERESSE||'CONVIDADO')}${selectField('RSVP','gRsvp',['NÃO COMPARECERÁ','CONFIRMADO','PENDENTE'],g.RSVP||'PENDENTE')}
+        <div class="field"><label>Mesa</label><select id="gMesa">${tableOptions}</select></div>${field('Assento / posição','gSeat',g.ASSENTO)}
+        <div class="field"><label>Grupo / titular</label><select id="gTit">${titularOptions}</select></div>
         <div class="field" style="grid-column:span 2"><label>URL da foto</label><input id="gFoto" value="${U.esc(g.FOTO_URL||'')}"></div>
-        <div class="field"><label>Vinculado ao titular (ID)</label><input id="gTit" value="${U.esc(g.ID_TITULAR||'')}"></div>
         ${!g.ID_CONVIDADO?'<div class="field" style="grid-column:span 2"><label>Acompanhante (opcional)</label><input id="gAcomp" placeholder="Nome completo do acompanhante"></div><div class="field"><label>Sexo acompanhante</label><select id="gAcompSexo"><option></option><option>MASCULINO</option><option>FEMININO</option></select></div>':''}
         <div class="field" style="grid-column:1/-1"><label>Observação da recepção</label><textarea id="gObs">${U.esc(g.OBS_RECEPCAO||'')}</textarea></div>
       </div>`, `<button class="btn" data-close>Cancelar</button><button class="btn btn-primary" data-save>Salvar</button>`);
     m.querySelector('[data-save]').onclick=async ev=>{
       const btn=ev.currentTarget;U.setBusy(btn,true);
       try{
-        const p={ID_CONVIDADO:g.ID_CONVIDADO||'',ID_PESSOA:g.ID_PESSOA||'',eventId:state.eventId,nomeCompleto:U.$('#gNome',m).value.trim(),nomeGuerra:U.$('#gGuerra',m).value.trim(),postoGrad:U.$('#gPosto',m).value.trim(),cargo:U.$('#gCargo',m).value.trim(),omOrgao:U.$('#gOm',m).value.trim(),sexo:U.$('#gSexo',m).value,vocativo:U.$('#gVoc',m).value.trim(),precedencia:U.$('#gPrec',m).value,email:U.$('#gEmail',m).value.trim(),telefone:U.$('#gTel',m).value.trim(),tipo:U.$('#gTipo',m).value,autoridadeInteresse:U.$('#gAut',m).value,nivelInteresse:U.$('#gNivel',m).value,rsvp:U.$('#gRsvp',m).value,mesaId:U.$('#gMesa',m).value,assento:U.$('#gSeat',m).value.trim(),codigoConvidado:U.$('#gCode',m).value.trim(),fotoUrl:U.$('#gFoto',m).value.trim(),idTitular:U.$('#gTit',m).value.trim(),obsRecepcao:U.$('#gObs',m).value.trim()};
+        const p={ID_CONVIDADO:g.ID_CONVIDADO||'',ID_PESSOA:g.ID_PESSOA||'',eventId:state.eventId,postoGrad:U.$('#gPosto',m).value.trim(),nomeCompleto:U.$('#gNome',m).value.trim(),nomeGuerra:U.$('#gGuerra',m).value.trim(),cargo:U.$('#gCargo',m).value.trim(),omOrgao:U.$('#gOm',m).value.trim(),sexo:U.$('#gSexo',m).value,vocativo:U.$('#gVoc',m).value.trim(),precedencia:U.$('#gPrec',m).value,email:U.$('#gEmail',m).value.trim(),telefone:U.$('#gTel',m).value.trim(),tipo:U.$('#gTipo',m).value,autoridadeInteresse:U.$('#gAut',m).value,nivelInteresse:U.$('#gNivel',m).value,rsvp:U.$('#gRsvp',m).value,mesaId:U.$('#gMesa',m).value,assento:U.$('#gSeat',m).value.trim(),fotoUrl:U.$('#gFoto',m).value.trim(),idTitular:U.$('#gTit',m).value,obsRecepcao:U.$('#gObs',m).value.trim()};
         if(!g.ID_CONVIDADO){p.acompanhanteNome=U.$('#gAcomp',m).value.trim();p.acompanhanteSexo=U.$('#gAcompSexo',m).value;}
         if(!p.nomeCompleto)throw new Error('Informe o nome completo.');
         await A.call('saveGuest',p);m.remove();await loadEvent();U.toast('Convidado salvo.','success');
@@ -648,11 +655,12 @@ tr:hover td{background:#fbfdff}
   }
 
   function importModal(){
-    const m=U.modal('Importar convidados',`<p class="muted">Cole dados de Excel/Sheets com cabeçalho. Colunas reconhecidas: NOME, POSTO, CARGO, OM, SEXO, EMAIL, TELEFONE, PRECEDENCIA, AUTORIDADE, NIVEL, RSVP, MESA, ACOMPANHANTE.</p><div class="field"><label>Dados</label><textarea id="impText" style="min-height:280px" placeholder="NOME\tPOSTO\tCARGO\tOM\nFulano de Tal\tCel Av\tComandante\t... "></textarea></div><div id="impStatus" class="small muted" style="margin-top:8px"></div>`, `<button class="btn" data-close>Cancelar</button><button class="btn btn-primary" data-import-now>Importar</button>`);
+    const m=U.modal('Importar convidados',`<p class="muted">Cole as linhas da planilha modelo. Somente <strong>NOME_COMPLETO</strong> é obrigatório; os demais campos podem ser completados depois no SGCES.</p><p class="small muted">Colunas aceitas: POSTO_GRAD, NOME_COMPLETO, NOME_GUERRA, TIPO, TITULAR_GRUPO, CARGO, OM_ORGAO, SEXO, RSVP, MESA, AUTORIDADE_INTERESSE, NIVEL_INTERESSE, PRECEDENCIA, EMAIL, TELEFONE, FOTO_URL e OBS_RECEPCAO.</p><div class="field"><label>Dados copiados do Excel / Sheets</label><textarea id="impText" style="min-height:300px" placeholder="POSTO_GRAD\tNOME_COMPLETO\tNOME_GUERRA\t...\nCel Av\tJoão da Silva\tSilva\t..."></textarea></div><div id="impStatus" class="small muted" style="margin-top:8px"></div>`, `<button class="btn" data-close>Cancelar</button><button class="btn btn-primary" data-import-now>Importar</button>`);
     m.querySelector('[data-import-now]').onclick=async ev=>{
       const btn=ev.currentTarget;U.setBusy(btn,true,'Importando');
       try{
         const rows=parseImport(U.$('#impText',m).value); if(!rows.length)throw new Error('Nenhuma linha válida.');
+        rows.sort((a,b)=>(a.titularNome?1:0)-(b.titularNome?1:0));
         let total=0; for(let i=0;i<rows.length;i+=8){
           U.$('#impStatus',m).textContent=`Importando ${Math.min(i+8,rows.length)} de ${rows.length}...`;
           const r=await A.call('importGuests',{eventId:state.eventId,rows:rows.slice(i,i+8)},45000); total+=U.num(r.imported);
@@ -669,7 +677,8 @@ tr:hover td{background:#fbfdff}
     const pick=(obj,names)=>{for(const n of names){const idx=h.indexOf(n);if(idx>=0)return obj[idx]||'';}return'';};
     return lines.slice(1).map(line=>line.split(delim)).filter(r=>r.some(Boolean)).map(r=>{
       const mesaTxt=pick(r,['mesa','numeromesa']); const mesa=(state.data.tables||[]).find(t=>String(t.NUMERO)===String(mesaTxt)||U.normalize(t.NOME)===U.normalize(mesaTxt));
-      return {nomeCompleto:pick(r,['nome','nomecompleto']),postoGrad:pick(r,['posto','postograd','postograduacao']),cargo:pick(r,['cargo','funcao']),omOrgao:pick(r,['om','orgao','omorgao']),sexo:pick(r,['sexo']),email:pick(r,['email']),telefone:pick(r,['telefone','celular']),precedencia:pick(r,['precedencia','ordemprecedencia']),autoridadeInteresse:/^(sim|s|1|true)$/i.test(pick(r,['autoridade','autoridadeinteresse']))?'SIM':'NAO',nivelInteresse:pick(r,['nivel','nivelinteresse'])||'CONVIDADO',rsvp:pick(r,['rsvp','status'])||'PENDENTE',mesaId:mesa?mesa.ID_MESA:'',acompanhanteNome:pick(r,['acompanhante','nomeacompanhante'])};
+      const tipo=(pick(r,['tipo'])||'TITULAR').toUpperCase();
+      return {postoGrad:pick(r,['postograd','posto','postograduacao']),nomeCompleto:pick(r,['nomecompleto','nome']),nomeGuerra:pick(r,['nomeguerra']),tipo:tipo,titularNome:pick(r,['titulargrupo','titular','grupotitular']),cargo:pick(r,['cargo','funcao']),omOrgao:pick(r,['omorgao','om','orgao']),sexo:pick(r,['sexo']),rsvp:pick(r,['rsvp','status'])||'PENDENTE',mesaId:mesa?mesa.ID_MESA:'',autoridadeInteresse:/^(sim|s|1|true)$/i.test(pick(r,['autoridadeinteresse','autoridade']))?'SIM':'NAO',nivelInteresse:pick(r,['nivelinteresse','nivel'])||'CONVIDADO',precedencia:pick(r,['precedencia','ordemprecedencia']),email:pick(r,['email']),telefone:pick(r,['telefone','celular']),fotoUrl:pick(r,['fotourl','foto']),obsRecepcao:pick(r,['obsrecepcao','observacao','obs']),acompanhanteNome:pick(r,['acompanhante','nomeacompanhante'])};
     }).filter(x=>x.nomeCompleto);
   }
 
@@ -687,18 +696,18 @@ tr:hover td{background:#fbfdff}
     const m=U.modal(t.ID_MESA?'Editar mesa':'Adicionar mesa',`
       <div class="form-grid-3">
         ${field('Número','mNum',t.NUMERO,'number')}${field('Nome','mNome',t.NOME)}${field('Capacidade','mCap',t.CAPACIDADE||8,'number')}
-        ${selectField('Formato','mFormato',['REDONDA','RETANGULAR','U'],t.FORMATO||'REDONDA')}${selectField('Tipo de alocação','mTipo',['FIXO','RESERVA','LIVRE','HIBRIDO'],t.TIPO_ALOCACAO||'FIXO')}${selectField('Mesa de autoridades','mAut',['NAO','SIM'],t.MESA_AUTORIDADES||'NAO')}
+        ${selectField('Formato','mFormato',['REDONDA','RETANGULAR','U'],t.FORMATO||'REDONDA')}${selectField('Tipo de alocação','mTipo',['FIXO','RESERVA','LIVRE','HÍBRIDO'],t.TIPO_ALOCACAO||'FIXO')}${selectField('Mesa de autoridades','mAut',['NAO','SIM'],t.MESA_AUTORIDADES||'NAO')}
         ${selectField('Mesa principal','mPrincipal',['NAO','SIM'],t.PRINCIPAL||'NAO')}${selectField('Usar ICA 908-1','mIca',['NAO','SIM'],t.USA_ICA||'NAO')}${selectField('Composição','mComp',['DESACOMPANHADOS','CASAIS'],t.COMPOSICAO||'DESACOMPANHADOS')}
         ${selectField('Usar cabeceiras','mCab',['NAO','SIM'],t.CABECEIRAS||'NAO')}${selectField('Anfitrião é maior precedência','mHostHigh',['SIM','NAO'],t.ANFITRIAO_MAIOR_PRECEDENCIA||'SIM')}
         <div class="field"><label>Anfitrião</label><select id="mHost">${guestOpts}</select></div>
-        <div class="field"><label>Homenageado</label><select id="mHon">${guestOpts}</select></div>${field('Rotação no croqui','mRot',t.ROTACAO||0,'number')}${field('Largura (%)','mW',t.W||'','number')}${field('Altura (%)','mH',t.H||'','number')}
+        <div class="field"><label>Homenageado</label><select id="mHon">${guestOpts}</select></div>${field('Rotação no croqui','mRot',t.ROTACAO||0,'number')}<div class="field" style="grid-column:span 2"><label>Tamanho no croqui</label><div class="small muted" style="padding:9px 0">Redimensione visualmente a mesa diretamente na tela <strong>Croqui</strong>.</div></div>
         <div class="field" style="grid-column:1/-1"><label>Observações</label><textarea id="mObs">${U.esc(t.OBS||'')}</textarea></div>
       </div>`, `<button class="btn" data-close>Cancelar</button><button class="btn btn-primary" data-save>Salvar</button>`);
     U.$('#mHost',m).value=t.ANFITRIAO_ID||'';U.$('#mHon',m).value=t.HOMENAGEADO_ID||'';
     m.querySelector('[data-save]').onclick=async ev=>{
       const btn=ev.currentTarget;U.setBusy(btn,true);
       try{
-        const p={ID_MESA:t.ID_MESA||'',eventId:state.eventId,numero:U.$('#mNum',m).value,nome:U.$('#mNome',m).value.trim(),capacidade:U.$('#mCap',m).value,formato:U.$('#mFormato',m).value,tipoAlocacao:U.$('#mTipo',m).value,mesaAutoridades:U.$('#mAut',m).value,principal:U.$('#mPrincipal',m).value,usaIca:U.$('#mIca',m).value,composicao:U.$('#mComp',m).value,cabeceiras:U.$('#mCab',m).value,anfitriaoMaiorPrecedencia:U.$('#mHostHigh',m).value,anfitriaoId:U.$('#mHost',m).value,homenageadoId:U.$('#mHon',m).value,rotacao:U.$('#mRot',m).value,w:U.$('#mW',m).value,h:U.$('#mH',m).value,obs:U.$('#mObs',m).value.trim()};
+        const p={ID_MESA:t.ID_MESA||'',eventId:state.eventId,numero:U.$('#mNum',m).value,nome:U.$('#mNome',m).value.trim(),capacidade:U.$('#mCap',m).value,formato:U.$('#mFormato',m).value,tipoAlocacao:U.$('#mTipo',m).value,mesaAutoridades:U.$('#mAut',m).value,principal:U.$('#mPrincipal',m).value,usaIca:U.$('#mIca',m).value,composicao:U.$('#mComp',m).value,cabeceiras:U.$('#mCab',m).value,anfitriaoMaiorPrecedencia:U.$('#mHostHigh',m).value,anfitriaoId:U.$('#mHost',m).value,homenageadoId:U.$('#mHon',m).value,rotacao:U.$('#mRot',m).value,obs:U.$('#mObs',m).value.trim()};
         if(!p.nome)p.nome='Mesa '+(p.numero||''); if(!p.capacidade||Number(p.capacidade)<1)throw new Error('Capacidade inválida.');
         await A.call('saveTable',p);m.remove();await loadEvent();U.toast('Mesa salva.','success');
       }catch(err){U.toast(err.message,'error');}finally{U.setBusy(btn,false);}
@@ -707,22 +716,84 @@ tr:hover td{background:#fbfdff}
 
   function renderCroqui(){
     const c=U.$('[data-section="croqui"]');if(requireEvent(c,'Croqui'))return;
-    c.innerHTML=heading('Croqui','Arraste as mesas para organizar o salão. O mesmo croqui é usado na Recepção, Portal do Convidado e TV.',`<button class="btn btn-primary" data-save-layout>Salvar posições</button>`)+`
-      <div class="card"><div class="floor-toolbar"><span class="muted small">Arraste as mesas. Para alterar tamanho ou rotação, edite a mesa.</span></div><div class="floor-wrap"><div id="editorFloor" class="floor"></div></div></div>`;
-    const floor=U.$('#editorFloor',c); U.renderFloor(floor,state.data.tables||[],{}); enableDrag(floor);
+    const e=state.data.event||{};
+    c.innerHTML=heading('Croqui','Use uma imagem do salão como fundo e posicione as mesas sobre ela. Arraste para mover e use o ponto azul para redimensionar.',`<button class="btn btn-primary" data-save-layout>Salvar croqui</button>`)+`
+      <div class="card" style="margin-bottom:16px">
+        <div class="section-actions">
+          <div style="flex:1;min-width:280px">
+            <div class="field"><label>Imagem de fundo do croqui</label><input id="croquiFile" type="file" accept="image/png,image/jpeg,image/webp"></div>
+            <div class="small muted">Selecione uma imagem do salão. O SGCES envia uma cópia otimizada para a pasta <strong>SGCES - Arquivos</strong> no Google Drive.</div>
+          </div>
+          <div class="actions" style="align-self:flex-end"><button class="btn btn-primary" data-upload-bg>Enviar imagem</button><button class="btn" data-clear-bg>Remover imagem</button></div>
+        </div>
+        <details style="margin-top:12px"><summary class="small" style="cursor:pointer;font-weight:700">Usar uma imagem já publicada por URL</summary><div class="section-actions" style="margin-top:10px"><div style="flex:1;min-width:280px"><div class="field"><input id="croquiUrl" value="${U.esc(e.CROQUI_URL||'')}" placeholder="URL pública ou link compartilhado do Google Drive"></div></div><button class="btn" data-save-bg>Aplicar URL</button></div></details>
+        <div class="small muted" style="margin-top:10px">A mesma imagem é usada pela Organização, Recepção, Portal do Convidado e TV.</div>
+      </div>
+      <div class="card"><div class="floor-toolbar"><span class="muted small">Arraste as mesas. Redimensione pelo ponto azul. Mesas redondas permanecem sempre circulares, em proporção 1:1.</span></div><div class="floor-wrap"><div id="editorFloor" class="floor"></div></div></div>`;
+    const floor=U.$('#editorFloor',c); U.renderFloor(floor,state.data.tables||[],{editor:true,backgroundUrl:e.CROQUI_URL}); enableFloorEditing(floor);
     c.querySelector('[data-save-layout]').onclick=()=>saveFloorLayout(floor);
+    c.querySelector('[data-upload-bg]').onclick=async ev=>{
+      const file=U.$('#croquiFile',c).files[0]; if(!file){U.toast('Selecione uma imagem.','error');return;}
+      const btn=ev.currentTarget;U.setBusy(btn,true);
+      try{await uploadCroquiImage(file,state.eventId,e.CROQUI_URL||'');await loadEvent();renderCroqui();U.toast('Imagem do croqui enviada.','success');}
+      catch(err){U.toast(err.message||String(err),'error');}
+      finally{U.setBusy(btn,false);}
+    };
+    c.querySelector('[data-save-bg]').onclick=async()=>{await runBusy(async()=>{const r=await A.call('saveEvent',{ID_EVENTO:state.eventId,CROQUI_URL:U.$('#croquiUrl',c).value.trim()});state.data.event=r.event;renderCroqui();U.toast('Imagem do croqui atualizada.','success');});};
+    c.querySelector('[data-clear-bg]').onclick=async()=>{await runBusy(async()=>{const r=await A.call('saveEvent',{ID_EVENTO:state.eventId,CROQUI_URL:''});state.data.event=r.event;renderCroqui();U.toast('Imagem removida.','success');});};
   }
 
-  function enableDrag(floor){
+  async function optimizeImageFile(file){
+    if(!file || !/^image\//i.test(file.type||''))throw new Error('Selecione um arquivo de imagem.');
+    const original=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=()=>reject(new Error('Não foi possível ler a imagem.'));r.readAsDataURL(file);});
+    if(file.size<=1500000)return original;
+    const img=await new Promise((resolve,reject)=>{const im=new Image();im.onload=()=>resolve(im);im.onerror=()=>reject(new Error('Imagem inválida.'));im.src=original;});
+    const max=2200,scale=Math.min(1,max/Math.max(img.naturalWidth,img.naturalHeight));
+    const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(img.naturalWidth*scale));canvas.height=Math.max(1,Math.round(img.naturalHeight*scale));
+    const ctx=canvas.getContext('2d');ctx.fillStyle='#ffffff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(img,0,0,canvas.width,canvas.height);
+    return canvas.toDataURL('image/jpeg',0.88);
+  }
+
+  async function uploadCroquiImage(file,eventId,oldUrl){
+    if(!A.readyApi())throw new Error('Configure a URL do Web App em config.js.');
+    const dataUrl=await optimizeImageFile(file);
+    const apiUrl=window.SGCES_CONFIG.API_URL;
+    return new Promise((resolve,reject)=>{
+      const frame=document.createElement('iframe'),form=document.createElement('form');
+      const frameName='sgces_upload_'+Date.now()+'_'+Math.random().toString(36).slice(2);
+      frame.name=frameName;frame.style.display='none';document.body.appendChild(frame);
+      form.method='POST';form.action=apiUrl;form.target=frameName;form.style.display='none';
+      const add=(name,value)=>{const input=document.createElement('input');input.type='hidden';input.name=name;input.value=value;form.appendChild(input);};
+      add('action','uploadEventImage');add('payload',JSON.stringify({eventId:eventId,fileName:file.name,dataUrl:dataUrl}));document.body.appendChild(form);
+      let submitted=false,done=false;
+      const cleanup=()=>{try{form.remove();frame.remove();}catch(e){}};
+      const timer=setTimeout(()=>{if(done)return;done=true;cleanup();reject(new Error('Tempo esgotado ao enviar a imagem.'));},60000);
+      frame.onload=async()=>{
+        if(!submitted||done)return;
+        try{await new Promise(r=>setTimeout(r,500));const r=await A.call('eventData',{eventId:eventId});const newUrl=r&&r.event&&r.event.CROQUI_URL;if(!newUrl||String(newUrl)===String(oldUrl||''))throw new Error('A imagem não foi gravada. Verifique a autorização do Google Drive e tente novamente.');done=true;clearTimeout(timer);cleanup();resolve(newUrl);}
+        catch(err){done=true;clearTimeout(timer);cleanup();reject(err);}
+      };
+      submitted=true;form.submit();
+    });
+  }
+
+  function enableFloorEditing(floor){
     floor.querySelectorAll('.floor-table').forEach(el=>{
-      let start=null;
-      el.addEventListener('pointerdown',e=>{e.preventDefault();el.setPointerCapture(e.pointerId);start={x:e.clientX,y:e.clientY,left:parseFloat(el.style.left),top:parseFloat(el.style.top)};el.classList.add('dragging');});
-      el.addEventListener('pointermove',e=>{if(!start)return;const r=floor.getBoundingClientRect();const dx=(e.clientX-start.x)/r.width*100,dy=(e.clientY-start.y)/r.height*100;el.style.left=Math.max(3,Math.min(97,start.left+dx))+'%';el.style.top=Math.max(3,Math.min(97,start.top+dy))+'%';});
-      const end=()=>{start=null;el.classList.remove('dragging');}; el.addEventListener('pointerup',end);el.addEventListener('pointercancel',end);
+      let move=null,resize=null;
+      el.addEventListener('pointerdown',e=>{
+        if(e.target.classList.contains('resize-handle'))return;
+        e.preventDefault();el.setPointerCapture(e.pointerId);move={x:e.clientX,y:e.clientY,left:parseFloat(el.style.left),top:parseFloat(el.style.top)};el.classList.add('dragging');
+      });
+      el.addEventListener('pointermove',e=>{if(!move)return;const r=floor.getBoundingClientRect();const dx=(e.clientX-move.x)/r.width*100,dy=(e.clientY-move.y)/r.height*100;el.style.left=Math.max(2,Math.min(98,move.left+dx))+'%';el.style.top=Math.max(2,Math.min(98,move.top+dy))+'%';});
+      const endMove=()=>{move=null;el.classList.remove('dragging');}; el.addEventListener('pointerup',endMove);el.addEventListener('pointercancel',endMove);
+      const h=el.querySelector('.resize-handle'); if(!h)return;
+      h.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();h.setPointerCapture(e.pointerId);const fr=floor.getBoundingClientRect(),er=el.getBoundingClientRect();resize={x:e.clientX,y:e.clientY,w:er.width,h:er.height,fw:fr.width,fh:fr.height,shape:el.dataset.shape};});
+      h.addEventListener('pointermove',e=>{if(!resize)return;e.preventDefault();e.stopPropagation();let newW=Math.max(46,resize.w+(e.clientX-resize.x));let newH=Math.max(34,resize.h+(e.clientY-resize.y));if(resize.shape==='REDONDA'){const d=Math.max(46,Math.max(newW,newH));newW=d;newH=d;}el.style.width=Math.min(55,newW/resize.fw*100)+'%';el.style.height=Math.min(70,newH/resize.fh*100)+'%';});
+      const endResize=e=>{if(e){e.preventDefault();e.stopPropagation();}resize=null;};h.addEventListener('pointerup',endResize);h.addEventListener('pointercancel',endResize);
     });
   }
   async function saveFloorLayout(floor){
-    const tables=Array.from(floor.querySelectorAll('.floor-table')).map(el=>({id:el.dataset.id,x:parseFloat(el.style.left),y:parseFloat(el.style.top)}));
+    const tables=Array.from(floor.querySelectorAll('.floor-table')).map(el=>({id:el.dataset.id,x:parseFloat(el.style.left),y:parseFloat(el.style.top),w:parseFloat(el.style.width),h:parseFloat(el.style.height)}));
     await runBusy(async()=>{await A.call('saveLayout',{tables});await loadEvent();U.toast('Croqui salvo.','success');});
   }
 
@@ -773,9 +844,15 @@ tr:hover td{background:#fbfdff}
     const c=U.$('[data-section="acessos"]');if(requireEvent(c,'Acessos'))return;
     const base=location.href.replace(/[^\/]*([?#].*)?$/,'');
     const evt='?evento='+encodeURIComponent(state.eventId);
-    const urls=[['Recepção',base+'recepcao.html'+evt,'Interface operacional deste evento para pesquisa, chegada, nominata e croqui.'],['Portal do convidado',base+'convidado.html'+evt,'Portal deste evento para código individual, reserva e QR de mesa.'],['Painel da TV',base+'tv.html'+evt,'Painel deste evento com croqui, ocupação e últimas chegadas.']];
-    const tableLinks=(state.data.tables||[]).map(t=>({name:t.NOME,url:base+'convidado.html?evento='+encodeURIComponent(state.eventId)+'&mesa='+encodeURIComponent(t.ID_MESA)}));
-    c.innerHTML=heading('Acessos','Os links abaixo já estão vinculados ao evento em edição. O evento ativo só é usado quando uma página é aberta sem parâmetro de evento.')+`<div class="grid grid-3">${urls.map(([n,u,d])=>`<div class="card"><h3>${U.esc(n)}</h3><p class="muted">${U.esc(d)}</p><div class="field"><input readonly value="${U.esc(u)}"></div><div class="actions" style="margin-top:10px"><button class="btn" data-copy="${U.esc(u)}">Copiar link</button><a class="btn btn-primary" href="${U.esc(u)}" target="_blank">Abrir</a></div></div>`).join('')}</div><div class="card" style="margin-top:16px"><h3>Links para QR Codes</h3><p>O código individual é gerado automaticamente. Os QR Codes de mesa ficam vinculados também ao evento correto.</p><div class="table-wrap"><table><thead><tr><th>Uso</th><th>Link</th><th></th></tr></thead><tbody><tr><td>Exemplo de convidado</td><td><code>${U.esc(base+'convidado.html?evento='+encodeURIComponent(state.eventId)+'&c=8F37K2A1')}</code></td><td></td></tr>${tableLinks.map(x=>`<tr><td>${U.esc(x.name)}</td><td><code>${U.esc(x.url)}</code></td><td><button class="btn btn-sm" data-copy="${U.esc(x.url)}">Copiar</button></td></tr>`).join('')}</tbody></table></div><p class="small muted">Ao escanear o QR de uma mesa, o portal confirma a mesa do convidado. Se o dispositivo ainda não conhecê-lo, solicita primeiro o código individual.</p></div>`;
+    const lookup=base+'convidado.html'+evt;
+    const reserve=base+'convidado.html'+evt+'&modo=reserva';
+    const urls=[
+      ['Recepção',base+'recepcao.html'+evt,'Interface operacional para localizar pessoas, confirmar chegada, acessar Nominata e croqui.'],
+      ['Portal do convidado',lookup,'Link para o convidado pesquisar o próprio nome, localizar a mesa e confirmar quem chegou no seu grupo.'],
+      ['Reserva de mesas',reserve,'Este é o link a compartilhar quando o evento permitir reserva remota. Mesas marcadas como “Mesa de autoridades” ficam bloqueadas automaticamente.'],
+      ['Painel da TV',base+'tv.html'+evt,'Painel deste evento com croqui, ocupação e últimas chegadas.']
+    ];
+    c.innerHTML=heading('Acessos','Os links abaixo já estão vinculados ao evento em edição.')+`<div class="grid grid-2">${urls.map(([n,u,d])=>`<div class="card"><h3>${U.esc(n)}</h3><p class="muted">${U.esc(d)}</p><div class="field"><input readonly value="${U.esc(u)}"></div><div class="actions" style="margin-top:10px"><button class="btn" data-copy="${U.esc(u)}">Copiar link</button><a class="btn btn-primary" href="${U.esc(u)}" target="_blank">Abrir</a></div></div>`).join('')}</div>`;
     c.querySelectorAll('[data-copy]').forEach(b=>b.onclick=async()=>{try{await navigator.clipboard.writeText(b.dataset.copy);U.toast('Link copiado.','success');}catch(e){U.toast('Não foi possível copiar automaticamente.','error');}});
   }
 
