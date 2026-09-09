@@ -4,7 +4,203 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>SGCES — Organização</title>
-  <link rel="stylesheet" href="css/app.css">
+  <style>
+:root{
+  --bg:#f5f7fb;
+  --panel:#ffffff;
+  --text:#1f2937;
+  --muted:#6b7280;
+  --line:#dbe1ea;
+  --primary:#173f74;
+  --primary-2:#275c9f;
+  --soft:#eaf1fb;
+  --success:#0f766e;
+  --warning:#a16207;
+  --danger:#b42318;
+  --shadow:0 8px 24px rgba(15,23,42,.08);
+  --radius:16px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+a{color:var(--primary-2);text-decoration:none}
+img{max-width:100%;display:block}
+.hidden{display:none!important}
+.muted{color:var(--muted)}
+.small{font-size:.86rem}
+.nowrap{white-space:nowrap}
+.text-right{text-align:right}
+
+/* shell organização */
+.app-shell{min-height:100vh;display:grid;grid-template-columns:260px 1fr}
+.sidebar{background:#102d52;color:#fff;padding:22px 16px;position:sticky;top:0;height:100vh;overflow:auto}
+.brand{padding:6px 10px 22px;border-bottom:1px solid rgba(255,255,255,.14);margin-bottom:16px}
+.brand h1{font-size:2.05rem;line-height:1.05;margin:0 0 7px;font-weight:800;letter-spacing:.02em}
+.brand p{margin:0;color:#cdd9e8;font-size:.82rem;line-height:1.35}
+.nav{display:grid;gap:5px}
+.nav button{width:100%;border:0;border-radius:10px;background:transparent;color:#d9e6f4;text-align:left;padding:11px 12px;font-weight:600}
+.nav button:hover,.nav button.active{background:rgba(255,255,255,.12);color:#fff}
+.sidebar-footer{font-size:.75rem;color:#9fb5cf;margin:28px 10px 0}
+.main{min-width:0}
+.topbar{position:sticky;top:0;z-index:20;background:rgba(245,247,251,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding:12px 24px;display:flex;gap:12px;align-items:center;justify-content:space-between}
+.topbar-left,.topbar-right{display:flex;align-items:center;gap:10px;min-width:0}
+.active-event-label{font-size:.85rem;padding:7px 10px;border:1px solid var(--line);border-radius:999px;background:#fff;white-space:nowrap}.active-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#16a34a;margin-right:6px;vertical-align:1px}
+.content{padding:26px;max-width:1500px;margin:0 auto}
+.page-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:20px}
+.page-heading h2{font-size:2.3rem;line-height:1.15;margin:0 0 6px;font-weight:800;letter-spacing:-.02em}
+.page-heading p{margin:0;color:var(--muted)}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px}
+.card h3{margin:0 0 12px;font-size:1.12rem}
+.grid{display:grid;gap:16px}
+.grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.grid-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.grid-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.stats{display:grid;grid-template-columns:repeat(6,minmax(130px,1fr));gap:12px;margin-bottom:18px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:15px;box-shadow:0 4px 14px rgba(15,23,42,.05)}
+.stat strong{display:block;font-size:1.6rem;margin-top:3px}
+.stat span{font-size:.78rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+
+.btn{border:1px solid var(--line);background:#fff;color:var(--text);padding:9px 13px;border-radius:10px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;gap:7px}
+.btn:hover{filter:brightness(.98)}
+.btn-primary{background:var(--primary);border-color:var(--primary);color:#fff}
+.btn-soft{background:var(--soft);border-color:#cbdaf0;color:var(--primary)}
+.btn-danger{background:#fff3f2;border-color:#f0c5c1;color:var(--danger)}
+.btn-success{background:#ecfdf5;border-color:#a7f3d0;color:#047857}
+.btn-sm{padding:6px 9px;font-size:.84rem;border-radius:8px}
+.btn-lg{padding:12px 16px;font-size:1rem}
+.icon-btn{width:38px;height:38px;padding:0;border-radius:10px}
+
+.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.form-grid-3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.field{display:grid;gap:6px}
+.field label{font-size:.8rem;font-weight:800;color:#445064;text-transform:uppercase;letter-spacing:.04em}
+.field input,.field select,.field textarea,.search-input{width:100%;border:1px solid #cfd7e3;border-radius:10px;padding:10px 11px;background:#fff;color:var(--text);outline:none}
+.field textarea{min-height:90px;resize:vertical}
+.field input:focus,.field select:focus,.field textarea:focus,.search-input:focus{border-color:#759aca;box-shadow:0 0 0 3px rgba(39,92,159,.11)}
+.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.section-actions{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+
+.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:12px;background:#fff}
+table{border-collapse:collapse;width:100%;font-size:.9rem}
+th,td{padding:10px 11px;border-bottom:1px solid #e8edf4;text-align:left;vertical-align:middle}
+th{background:#f8fafc;color:#4b5563;font-size:.76rem;text-transform:uppercase;letter-spacing:.04em;position:sticky;top:0;z-index:1}
+tr:last-child td{border-bottom:0}
+tr:hover td{background:#fbfdff}
+.badge{display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;font-size:.75rem;font-weight:800;background:#edf2f7;color:#475569}
+.badge.success{background:#dcfce7;color:#166534}
+.badge.warning{background:#fef3c7;color:#92400e}
+.badge.danger{background:#fee2e2;color:#991b1b}
+.badge.info{background:#dbeafe;color:#1d4ed8}
+
+.modal-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.48);z-index:100;display:flex;align-items:center;justify-content:center;padding:18px}
+.modal{background:#fff;width:min(840px,96vw);max-height:92vh;overflow:auto;border-radius:18px;box-shadow:0 25px 60px rgba(15,23,42,.25)}
+.modal-head{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:18px 20px;border-bottom:1px solid var(--line)}
+.modal-head h3{margin:0;font-size:1.35rem}
+.modal-body{padding:20px}
+.modal-foot{padding:14px 20px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+
+.toast-wrap{position:fixed;right:18px;bottom:18px;z-index:500;display:grid;gap:9px;max-width:380px}
+.toast{background:#111827;color:#fff;padding:12px 14px;border-radius:12px;box-shadow:var(--shadow);font-weight:650}
+.toast.error{background:#8d1f18}
+.toast.success{background:#065f46}
+.loading{opacity:.55;pointer-events:none}
+.spinner{width:16px;height:16px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;display:inline-block;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* croqui */
+.floor-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.floor-wrap{background:#fff;border:1px solid var(--line);border-radius:16px;padding:12px;overflow:auto}
+.floor{position:relative;min-width:760px;aspect-ratio:16/9;background:linear-gradient(90deg,#f8fafc 24px,transparent 24px),linear-gradient(#f8fafc 24px,transparent 24px);background-size:25px 25px;border:1px dashed #cbd5e1;border-radius:12px;overflow:hidden}
+.floor-table{position:absolute;transform:translate(-50%,-50%);display:flex;align-items:center;justify-content:center;text-align:center;background:#eef4fb;border:2px solid #7d9fc8;color:#183b68;font-weight:800;user-select:none;touch-action:none;box-shadow:0 5px 14px rgba(15,23,42,.08);cursor:grab}
+.floor-table.round{border-radius:50%}
+.floor-table.rect{border-radius:9px}
+.floor-table.u{border-radius:10px;border-top-color:transparent;background:transparent;box-shadow:none}
+.floor-table.dragging{cursor:grabbing;z-index:10;box-shadow:0 12px 28px rgba(15,23,42,.18)}
+.floor-table .occ{display:block;font-size:.72rem;font-weight:700;margin-top:2px;color:#52708f}
+.floor-table.highlight{outline:5px solid rgba(22,163,74,.25);background:#dcfce7;border-color:#16a34a;color:#14532d}
+.floor-table.full{background:#fff1f2;border-color:#e11d48;color:#881337}
+
+/* composição da mesa */
+.seating-stage{position:relative;min-height:520px;background:#fbfdff;border:1px solid var(--line);border-radius:16px;overflow:auto}
+.seating-canvas{position:relative;width:900px;height:500px;margin:0 auto}
+.table-shape{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:#f1f5f9;border:3px solid #64748b}
+.table-shape.round{width:230px;height:230px;border-radius:50%}
+.table-shape.rect{width:470px;height:150px;border-radius:8px}
+.table-shape.u{width:410px;height:250px;border:20px solid #64748b;border-top:0;background:transparent;border-radius:0 0 12px 12px}
+.seat{position:absolute;transform:translate(-50%,-50%);width:130px;min-height:52px;border:1px solid #cbd5e1;background:#fff;border-radius:10px;padding:6px;text-align:center;font-size:.75rem;box-shadow:0 3px 9px rgba(15,23,42,.06)}
+.seat strong{display:block;font-size:.79rem}
+.seat .seat-code{font-size:.65rem;color:var(--muted)}
+
+/* recepção */
+.public-shell{min-height:100vh;background:var(--bg)}
+.public-header{background:#102d52;color:#fff;padding:18px 22px;display:flex;justify-content:space-between;gap:12px;align-items:center}
+.public-header h1{font-size:1.85rem;margin:0;line-height:1.05}
+.public-header p{margin:4px 0 0;color:#cdd9e8;font-size:.83rem}
+.public-main{max-width:1180px;margin:0 auto;padding:22px}
+.reception-search{font-size:1.05rem;padding:13px 14px}
+.person-card{display:grid;grid-template-columns:84px 1fr auto;gap:14px;align-items:center;border:1px solid var(--line);background:#fff;border-radius:14px;padding:12px}
+.avatar{width:84px;height:84px;border-radius:12px;background:#e9eef5;object-fit:cover;display:flex;align-items:center;justify-content:center;color:#7c899b;font-weight:800;overflow:hidden}
+.avatar img{width:100%;height:100%;object-fit:cover}
+.person-card h3{margin:0 0 4px;font-size:1.05rem}
+.person-card p{margin:2px 0;color:var(--muted);font-size:.88rem}
+.nominata-list{display:grid;gap:8px}
+.nominata-item{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#fff}
+
+/* convidado */
+.guest-page{min-height:100vh;background:#f7f8fb}
+.guest-hero{background:#102d52;color:#fff;min-height:210px;display:flex;align-items:flex-end;background-size:cover;background-position:center;position:relative}
+.guest-hero:before{content:"";position:absolute;inset:0;background:linear-gradient(to top,rgba(3,18,38,.85),rgba(3,18,38,.15))}
+.guest-hero-inner{position:relative;z-index:1;max-width:980px;width:100%;margin:0 auto;padding:30px 22px}
+.guest-hero h1{font-size:2.15rem;margin:0 0 8px;line-height:1.05}
+.guest-main{max-width:980px;margin:0 auto;padding:22px}
+.guest-table-callout{background:#fff;border:1px solid var(--line);border-radius:18px;padding:22px;text-align:center;box-shadow:var(--shadow)}
+.guest-table-callout .number{font-size:3rem;font-weight:900;color:var(--primary);line-height:1}
+.content-links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.content-link{display:flex;gap:10px;align-items:center;border:1px solid var(--line);background:#fff;border-radius:12px;padding:13px;font-weight:750}
+.sponsor-row{display:flex;gap:18px;align-items:center;justify-content:center;flex-wrap:wrap;padding:14px}
+.sponsor-row a,.sponsor-row span{display:block}
+.sponsor-row img{max-width:130px;max-height:70px;object-fit:contain}
+
+/* TV */
+.tv-page{min-height:100vh;background:#eef2f7;padding:18px;display:grid;grid-template-rows:auto 1fr auto;gap:14px}
+.tv-header{background:#102d52;color:#fff;border-radius:18px;padding:18px 24px;display:flex;justify-content:space-between;align-items:center;gap:18px}
+.tv-header h1{font-size:2.15rem;margin:0;line-height:1.05}
+.tv-grid{display:grid;grid-template-columns:minmax(0,2fr) minmax(280px,1fr);gap:14px;min-height:0}
+.tv-panel{background:#fff;border-radius:18px;border:1px solid var(--line);padding:16px;overflow:hidden}
+.tv-floor{position:relative;width:100%;height:100%;min-height:520px;background:#fbfdff;border-radius:12px;border:1px solid #e2e8f0}
+.tv-arrivals{display:grid;gap:8px}
+.tv-arrival{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid #edf0f4;padding:8px 0;font-size:1.02rem}
+.tv-sponsors{background:#fff;border:1px solid var(--line);border-radius:16px;padding:10px;min-height:86px;display:flex;justify-content:center;align-items:center}
+
+@media (max-width:1100px){
+  .stats{grid-template-columns:repeat(3,1fr)}
+  .grid-4{grid-template-columns:repeat(2,1fr)}
+}
+@media (max-width:820px){
+  .app-shell{grid-template-columns:1fr}
+  .sidebar{position:relative;height:auto;padding:14px}
+  .nav{grid-template-columns:repeat(4,minmax(0,1fr));overflow:auto}
+  .nav button{text-align:center;font-size:.8rem;padding:9px 7px}
+  .brand{padding:3px 5px 14px}.brand h1{font-size:1.65rem}
+  .topbar{position:relative;padding:10px 14px;align-items:flex-start;flex-direction:column}
+  .content{padding:16px}
+  .page-heading h2{font-size:1.9rem}
+  .grid-2,.grid-3,.grid-4,.form-grid,.form-grid-3{grid-template-columns:1fr}
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .person-card{grid-template-columns:62px 1fr}.person-card .actions{grid-column:1/-1}
+  .avatar{width:62px;height:62px}
+  .tv-grid{grid-template-columns:1fr}.tv-page{display:block}.tv-panel{margin-bottom:12px}
+  .content-links{grid-template-columns:1fr}
+}
+@media (max-width:520px){
+  .stats{grid-template-columns:1fr 1fr}.stat strong{font-size:1.35rem}
+  .public-header{padding:14px}.public-header h1{font-size:1.55rem}.public-main{padding:14px}
+  .guest-hero h1{font-size:1.8rem}.guest-main{padding:14px}
+}
+
+  </style>
 </head>
 <body>
 <div class="app-shell">
@@ -24,14 +220,17 @@
       <button data-view="conteudos">Conteúdos</button>
       <button data-view="acessos">Acessos</button>
     </nav>
-    <div class="sidebar-footer">SGCES v1.0.0</div>
+    <div class="sidebar-footer">SGCES v1.1.0</div>
   </aside>
 
   <main class="main">
     <header class="topbar">
       <div class="topbar-left">
-        <strong>Evento:</strong>
-        <select id="eventSelect" class="search-input" style="min-width:260px"></select>
+        <div>
+          <div class="small muted" style="font-weight:800;margin-bottom:4px">EVENTO EM EDIÇÃO</div>
+          <select id="eventSelect" class="search-input" style="min-width:300px"></select>
+        </div>
+        <div id="activeEventLabel" class="active-event-label"><span class="muted">Nenhum evento ativo</span></div>
       </div>
       <div class="topbar-right">
         <span id="syncStatus" class="small muted">Pronto</span>
@@ -52,9 +251,545 @@
     </div>
   </main>
 </div>
-<script src="js/config.js"></script>
-<script src="js/api.js"></script>
-<script src="js/common.js"></script>
-<script src="js/organizacao.js"></script>
+<script src="config.js"></script>
+
+
+
+
+<script>
+(function(){
+  let seq = 0;
+  const pending = new Map();
+
+  function readyApi(){
+    const u = String(window.SGCES_CONFIG && window.SGCES_CONFIG.API_URL || '');
+    return /^https:\/\/script\.google\.com\//.test(u) || /^https:\/\/script\.googleusercontent\.com\//.test(u);
+  }
+
+  function call(action, payload, timeoutMs){
+    payload = payload || {};
+    timeoutMs = timeoutMs || 25000;
+    if(!readyApi()) return Promise.reject(new Error('Configure a URL do Web App em js/config.js.'));
+
+    return new Promise((resolve,reject)=>{
+      const id = 'sgces_cb_' + Date.now() + '_' + (++seq);
+      const script = document.createElement('script');
+      const timer = setTimeout(()=>finish(new Error('Tempo esgotado ao consultar a API.')), timeoutMs);
+
+      function finish(err, data){
+        clearTimeout(timer);
+        try{ delete window[id]; }catch(e){ window[id]=undefined; }
+        if(script.parentNode) script.parentNode.removeChild(script);
+        pending.delete(id);
+        if(err) reject(err); else resolve(data);
+      }
+
+      window[id] = function(response){
+        if(!response || response.ok !== true) return finish(new Error(response && response.error ? response.error : 'Falha na API.'));
+        finish(null, response.data);
+      };
+
+      const qs = new URLSearchParams();
+      qs.set('action', action);
+      qs.set('payload', JSON.stringify(payload));
+      qs.set('callback', id);
+      qs.set('_', Date.now());
+      script.src = window.SGCES_CONFIG.API_URL + (window.SGCES_CONFIG.API_URL.includes('?') ? '&' : '?') + qs.toString();
+      script.onerror = ()=>finish(new Error('Não foi possível carregar a API do SGCES.'));
+      document.head.appendChild(script);
+      pending.set(id, {script,timer});
+    });
+  }
+
+  window.SGCES_API = { call, readyApi };
+})();
+
+</script>
+<script>
+(function(){
+  const $ = (sel,root=document)=>root.querySelector(sel);
+  const $$ = (sel,root=document)=>Array.from(root.querySelectorAll(sel));
+  const esc = s=>String(s==null?'':s).replace(/[&<>'"]/g,c=>({ '&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;' }[c]));
+  const yes = v=>['SIM','S','YES','TRUE','1'].includes(String(v||'').toUpperCase()) || v===true || v===1;
+  const num = (v,d=0)=>{ const n=Number(v); return Number.isFinite(n)?n:d; };
+  const fmtDate = v=>{
+    if(!v) return '';
+    const d = new Date(v);
+    if(Number.isNaN(d.getTime())) return String(v);
+    return new Intl.DateTimeFormat('pt-BR',{dateStyle:'short'}).format(d);
+  };
+  const fmtTime = v=>{
+    if(!v) return '';
+    const d = new Date(v);
+    if(Number.isNaN(d.getTime())) return String(v).slice(0,5);
+    return new Intl.DateTimeFormat('pt-BR',{hour:'2-digit',minute:'2-digit'}).format(d);
+  };
+  const normalize = s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  const byPrecedence = (a,b)=>{
+    const pa=num(a.ORDEM_PRECEDENCIA||a.PRECEDENCIA,999999)||999999;
+    const pb=num(b.ORDEM_PRECEDENCIA||b.PRECEDENCIA,999999)||999999;
+    return pa-pb || String(a.NOME_COMPLETO||'').localeCompare(String(b.NOME_COMPLETO||''),'pt-BR');
+  };
+  const displayName = g=>[g.POSTO_GRAD,g.NOME_GUERRA||g.NOME_COMPLETO].filter(Boolean).join(' ').trim();
+  const tableName = t=>t ? (t.NOME || ('Mesa '+t.NUMERO)) : 'Sem mesa';
+
+  function driveImage(url){
+    url=String(url||'').trim();
+    if(!url) return '';
+    const m=url.match(/\/d\/([A-Za-z0-9_-]+)/) || url.match(/[?&]id=([A-Za-z0-9_-]+)/);
+    if(m && /drive\.google\.com/.test(url)) return 'https://drive.google.com/thumbnail?id='+m[1]+'&sz=w1200';
+    return url;
+  }
+
+  function toast(msg,type){
+    let wrap=$('.toast-wrap');
+    if(!wrap){ wrap=document.createElement('div'); wrap.className='toast-wrap'; document.body.appendChild(wrap); }
+    const el=document.createElement('div'); el.className='toast '+(type||''); el.textContent=msg; wrap.appendChild(el);
+    setTimeout(()=>el.remove(),3600);
+  }
+
+  function setBusy(el,busy,label){
+    if(!el) return;
+    if(busy){
+      if(!el.dataset.original) el.dataset.original=el.innerHTML;
+      el.disabled=true; el.innerHTML='<span class="spinner"></span> '+(label||'Aguarde');
+    }else{
+      el.disabled=false; if(el.dataset.original){el.innerHTML=el.dataset.original; delete el.dataset.original;}
+    }
+  }
+
+  function modal(title, bodyHtml, footerHtml){
+    const bd=document.createElement('div'); bd.className='modal-backdrop';
+    bd.innerHTML=`<div class="modal"><div class="modal-head"><h3>${esc(title)}</h3><button class="btn icon-btn" data-close>&times;</button></div><div class="modal-body">${bodyHtml}</div><div class="modal-foot">${footerHtml||'<button class="btn" data-close>Fechar</button>'}</div></div>`;
+    bd.addEventListener('click',e=>{ if(e.target===bd || e.target.closest('[data-close]')) bd.remove(); });
+    document.body.appendChild(bd); return bd;
+  }
+
+  function badgeStatus(v){
+    const s=String(v||'').toUpperCase();
+    let cls='';
+    if(['PRESENTE','CONFIRMADO','SIM','ATIVO'].includes(s)) cls='success';
+    else if(['PENDENTE','RASCUNHO'].includes(s)) cls='warning';
+    else if(['NÃO COMPARECERÁ','NAO COMPARECERA','ARQUIVADO','NAO'].includes(s)) cls='danger';
+    return `<span class="badge ${cls}">${esc(v||'—')}</span>`;
+  }
+
+  function renderFloor(container,tables,opts){
+    opts=opts||{}; container.innerHTML=''; container.classList.add(opts.tv?'tv-floor':'floor');
+    const highlighted=String(opts.highlightTableId||'');
+    (tables||[]).forEach(t=>{
+      const el=document.createElement('div');
+      const shape=String(t.FORMATO||'REDONDA').toUpperCase();
+      el.className='floor-table '+(shape==='RETANGULAR'?'rect':shape==='U'?'u':'round');
+      if(String(t.ID_MESA)===highlighted) el.classList.add('highlight');
+      if(num(t.VAGAS,1)<=0 && num(t.CAPACIDADE)>0) el.classList.add('full');
+      el.dataset.id=t.ID_MESA;
+      const w=num(t.W,shape==='RETANGULAR'?18:10), h=num(t.H,shape==='RETANGULAR'?8:10);
+      el.style.left=num(t.X,50)+'%'; el.style.top=num(t.Y,50)+'%'; el.style.width=w+'%'; el.style.height=h+'%';
+      el.style.transform=`translate(-50%,-50%) rotate(${num(t.ROTACAO,0)}deg)`;
+      const occ = typeof t.OCUPACAO!=='undefined' ? `<span class="occ">${num(t.OCUPACAO)}/${num(t.CAPACIDADE)}${typeof t.VAGAS!=='undefined'?' • '+num(t.VAGAS)+' vaga(s)':''}</span>` : '';
+      el.innerHTML=`<div>${esc(t.NOME||('Mesa '+t.NUMERO))}${occ}</div>`;
+      if(opts.onClick) el.addEventListener('click',()=>opts.onClick(t,el));
+      container.appendChild(el);
+    });
+  }
+
+  function seatCoordinates(table, seatCode, total){
+    const format=String(table.FORMATO||'REDONDA').toUpperCase();
+    total=Math.max(num(table.CAPACIDADE,8),total||0);
+    if(format==='REDONDA'){
+      const i=num(String(seatCode).replace('R',''),0), angle=(-90)+(360*i/total), rad=190;
+      return {x:450+Math.cos(angle*Math.PI/180)*rad,y:250+Math.sin(angle*Math.PI/180)*rad};
+    }
+    if(format==='U'){
+      const pos=num(String(seatCode).replace('U',''),1);
+      // Posições 1.. alternam a partir do centro da base e depois sobem pelas laterais.
+      const baseCount=Math.min(5,total), sideRest=Math.max(0,total-baseCount), leftCount=Math.ceil(sideRest/2), rightCount=Math.floor(sideRest/2);
+      if(pos<=baseCount){
+        const order=[0,1,-1,2,-2]; const offset=order[pos-1]||0; return {x:450+offset*82,y:405};
+      }
+      const k=pos-baseCount;
+      if(k%2===1){ const idx=Math.ceil(k/2); return {x:235,y:355-(idx-1)*82}; }
+      const idx=k/2; return {x:665,y:355-(idx-1)*82};
+    }
+    const heads=yes(table.CABECEIRAS);
+    let side=total-(heads?2:0), top=Math.ceil(side/2), bottom=Math.floor(side/2);
+    const code=String(seatCode||'');
+    if(code==='L') return {x:160,y:250};
+    if(code==='R') return {x:740,y:250};
+    if(code.startsWith('T')){ const i=num(code.slice(1)); return {x:260+(top<=1?0:i*(380/(top-1))),y:135}; }
+    if(code.startsWith('B')){ const i=num(code.slice(1)); return {x:260+(bottom<=1?0:i*(380/(bottom-1))),y:365}; }
+    return {x:450,y:90};
+  }
+
+  function renderSeating(container,table,guests){
+    container.innerHTML='<div class="seating-canvas"></div>';
+    const canvas=container.firstElementChild;
+    const format=String(table.FORMATO||'REDONDA').toUpperCase();
+    const shape=document.createElement('div'); shape.className='table-shape '+(format==='RETANGULAR'?'rect':format==='U'?'u':'round'); canvas.appendChild(shape);
+    (guests||[]).filter(g=>g.ASSENTO).forEach(g=>{
+      const p=seatCoordinates(table,g.ASSENTO,Math.max(num(table.CAPACIDADE),guests.length));
+      const s=document.createElement('div'); s.className='seat'; s.style.left=p.x+'px'; s.style.top=p.y+'px';
+      s.innerHTML=`<strong>${esc(displayName(g))}</strong><span>${esc(g.CARGO||'')}</span><div class="seat-code">${esc(g.ASSENTO)}</div>`;
+      canvas.appendChild(s);
+    });
+  }
+
+  window.SGCES_UI={$, $$, esc, yes, num, fmtDate, fmtTime, normalize, byPrecedence, displayName, tableName, driveImage, toast, setBusy, modal, badgeStatus, renderFloor, renderSeating, seatCoordinates};
+})();
+
+</script>
+<script>
+(function(){
+  const U=window.SGCES_UI, A=window.SGCES_API;
+  const state={events:[],eventId:'',activeEventId:'',data:{event:null,guests:[],tables:[],contents:[],sponsors:[],stats:{}},view:'dashboard',selectedCerimonialTable:''};
+
+  document.addEventListener('DOMContentLoaded',init);
+
+  async function init(){
+    bindShell();
+    await bootstrap();
+  }
+
+  function bindShell(){
+    U.$$('#mainNav button').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.view)));
+    U.$('#refreshBtn').addEventListener('click',refresh);
+    U.$('#eventSelect').addEventListener('change',async e=>{
+      const id=e.target.value;
+      state.eventId=id;
+      try{ localStorage.setItem('sgces_selected_event',id||''); }catch(err){}
+      if(!id){ state.data={event:null,guests:[],tables:[],contents:[],sponsors:[],stats:{}}; updateEventIndicator(); renderAll(); return; }
+      await runBusy(async()=>{ await loadEvent(); });
+    });
+  }
+
+  function showView(view){
+    state.view=view;
+    U.$$('#mainNav button').forEach(b=>b.classList.toggle('active',b.dataset.view===view));
+    U.$$('[data-section]').forEach(s=>s.classList.toggle('hidden',s.dataset.section!==view));
+    renderView(view);
+  }
+
+  async function bootstrap(){
+    await runBusy(async()=>{
+      let remembered='';
+      try{ remembered=localStorage.getItem('sgces_selected_event')||''; }catch(err){}
+      const b=await A.call('bootstrap',{eventId:state.eventId||remembered});
+      state.events=b.events||[];
+      state.activeEventId=b.activeEventId||'';
+      const valid=id=>id&&state.events.some(e=>String(e.ID_EVENTO)===String(id));
+      state.eventId=valid(state.eventId)?state.eventId:(valid(remembered)?remembered:(b.selectedEventId||state.activeEventId||''));
+      try{ localStorage.setItem('sgces_selected_event',state.eventId||''); }catch(err){}
+      fillEventSelect();
+      if(state.eventId) await loadEvent(); else renderAll();
+    },'Conectando');
+  }
+
+  async function refresh(){
+    await runBusy(async()=>{
+      const b=await A.call('bootstrap',{eventId:state.eventId});
+      state.events=b.events||[];
+      state.activeEventId=b.activeEventId||'';
+      if(!state.eventId) state.eventId=b.selectedEventId||state.activeEventId||'';
+      fillEventSelect();
+      if(state.eventId) await loadEvent(); else renderAll();
+    });
+  }
+
+  async function loadEvent(){
+    if(!state.eventId) return;
+    state.data=await A.call('eventData',{eventId:state.eventId});
+    state.data.guests=(state.data.guests||[]).sort((a,b)=>String(a.NOME_COMPLETO||'').localeCompare(String(b.NOME_COMPLETO||''),'pt-BR'));
+    renderAll();
+  }
+
+  function fillEventSelect(){
+    const sel=U.$('#eventSelect');
+    sel.innerHTML='<option value="">Selecione um evento</option>'+state.events.map(e=>`<option value="${U.esc(e.ID_EVENTO)}" ${String(e.ID_EVENTO)===String(state.eventId)?'selected':''}>${U.esc(e.NOME)}${String(e.ID_EVENTO)===String(state.activeEventId)?' • ATIVO':''}</option>`).join('');
+    updateEventIndicator();
+  }
+
+  function updateEventIndicator(){
+    const el=U.$('#activeEventLabel'); if(!el)return;
+    const active=state.events.find(e=>String(e.ID_EVENTO)===String(state.activeEventId));
+    el.innerHTML=active?`<span class="active-dot"></span> Evento ativo: <strong>${U.esc(active.NOME)}</strong>`:'<span class="muted">Nenhum evento ativo</span>';
+  }
+
+  function renderAll(){
+    ['dashboard','evento','convidados','mesas','croqui','cerimonial','nominata','conteudos','acessos'].forEach(renderView);
+  }
+  function renderView(v){
+    const fn={dashboard:renderDashboard,evento:renderEvento,convidados:renderConvidados,mesas:renderMesas,croqui:renderCroqui,cerimonial:renderCerimonial,nominata:renderNominata,conteudos:renderConteudos,acessos:renderAcessos}[v];
+    if(fn) fn();
+  }
+
+  function heading(title,subtitle,actions){
+    return `<div class="page-heading"><div><h2>${U.esc(title)}</h2><p>${U.esc(subtitle||'')}</p></div><div class="actions">${actions||''}</div></div>`;
+  }
+  function requireEvent(container,title){
+    if(state.data.event) return false;
+    container.innerHTML=heading(title,'Nenhum evento selecionado.')+`<div class="card"><p>Crie o primeiro evento para iniciar o SGCES.</p><button class="btn btn-primary" data-new-event>Criar evento</button></div>`;
+    container.querySelector('[data-new-event]').addEventListener('click',()=>eventModal());
+    return true;
+  }
+
+  function renderDashboard(){
+    const c=U.$('[data-section="dashboard"]');
+    if(requireEvent(c,'Dashboard')) return;
+    const s=state.data.stats||{}, latest=(state.data.guests||[]).filter(g=>String(g.CHECKIN).toUpperCase()==='PRESENTE'&&g.HORARIO_CHECKIN).sort((a,b)=>String(b.HORARIO_CHECKIN).localeCompare(String(a.HORARIO_CHECKIN))).slice(0,6);
+    c.innerHTML=heading('Dashboard',state.data.event.NOME,`<button class="btn btn-soft" data-open-reception>Recepção</button><button class="btn btn-soft" data-open-tv>TV</button>`)+`
+      <div class="stats">
+        ${stat('Convidados',s.totalGuests)}${stat('Confirmados',s.confirmed)}${stat('Presentes',s.present)}${stat('Autoridades',s.authorities)}${stat('Autoridades presentes',s.authoritiesPresent)}${stat('Vagas livres',s.freeSeats)}
+      </div>
+      <div class="grid grid-2">
+        <div class="card"><h3>Croqui geral</h3><div class="floor-wrap"><div class="floor" id="dashFloor"></div></div></div>
+        <div class="card"><h3>Últimas chegadas</h3>${latest.length?`<div class="table-wrap"><table><thead><tr><th>Horário</th><th>Convidado</th><th>Mesa</th></tr></thead><tbody>${latest.map(g=>`<tr><td>${U.fmtTime(g.HORARIO_CHECKIN)}</td><td>${U.esc(U.displayName(g))}</td><td>${U.esc(tableFor(g.MESA_ID)?.NOME||'—')}</td></tr>`).join('')}</tbody></table></div>`:'<p class="muted">Ainda não há check-ins.</p>'}</div>
+      </div>`;
+    U.renderFloor(U.$('#dashFloor'),state.data.tables||[],{});
+    c.querySelector('[data-open-reception]').onclick=()=>window.open('recepcao.html?evento='+encodeURIComponent(state.eventId),'_blank');
+    c.querySelector('[data-open-tv]').onclick=()=>window.open('tv.html?evento='+encodeURIComponent(state.eventId),'_blank');
+  }
+  function stat(label,value){return `<div class="stat"><span>${U.esc(label)}</span><strong>${U.num(value)}</strong></div>`;}
+
+  function renderEvento(){
+    const c=U.$('[data-section="evento"]');
+    const e=state.data.event;
+    c.innerHTML=heading('Evento','Configuração geral do evento.',`<button class="btn btn-primary" data-new>Novo evento</button>${e?'<button class="btn" data-edit>Editar evento</button>':''}`)+(!e?`<div class="card"><p>Nenhum evento selecionado.</p></div>`:`
+      <div class="grid grid-2">
+        <div class="card"><h3>${U.esc(e.NOME)}</h3><p class="muted">${U.esc(e.SUBTITULO||'')}</p>
+          <div class="table-wrap"><table><tbody>
+          <tr><th>Data</th><td>${U.esc(e.DATA||'—')}</td></tr><tr><th>Horário</th><td>${U.esc([e.HORA_INICIO,e.HORA_FIM].filter(Boolean).join(' – ')||'—')}</td></tr><tr><th>Local</th><td>${U.esc(e.LOCAL||'—')}</td></tr><tr><th>Modo padrão</th><td>${U.esc(e.MODO_PADRAO||'—')}</td></tr><tr><th>Status</th><td>${U.badgeStatus(e.STATUS)}</td></tr>
+          </tbody></table></div>
+          <div class="actions" style="margin-top:12px">${String(e.ID_EVENTO)===String(state.activeEventId)?'<span class="badge success">EVENTO ATIVO</span>':(String(e.STATUS).toUpperCase()==='ARQUIVADO'?'<span class="badge">ARQUIVADO</span>':'<button class="btn btn-success" data-activate>Ativar este evento</button>')}${String(e.STATUS).toUpperCase()!=='ARQUIVADO'?'<button class="btn btn-danger" data-archive>Arquivar</button>':''}</div>
+        </div>
+        <div class="card"><h3>Banner</h3>${e.BANNER_URL?`<img src="${U.esc(U.driveImage(e.BANNER_URL))}" alt="Banner" style="width:100%;max-height:320px;object-fit:contain;border-radius:12px;background:#f8fafc">`:'<p class="muted">Nenhum banner configurado.</p>'}<h3 style="margin-top:18px">Observações</h3><p>${U.esc(e.OBSERVACOES||'—')}</p></div>
+      </div>`);
+    c.querySelector('[data-new]').onclick=()=>eventModal();
+    if(e){
+      c.querySelector('[data-edit]').onclick=()=>eventModal(e);
+      const activate=c.querySelector('[data-activate]'); if(activate) activate.onclick=()=>runBusy(async()=>{await A.call('setActiveEvent',{eventId:e.ID_EVENTO});state.activeEventId=e.ID_EVENTO;await bootstrap();U.toast('Evento ativo atualizado.','success');});
+      const ar=c.querySelector('[data-archive]'); if(ar) ar.onclick=()=>{if(confirm('Arquivar este evento?')) runBusy(async()=>{await A.call('archiveEvent',{eventId:e.ID_EVENTO});await bootstrap();});};
+    }
+  }
+
+  function eventModal(e){
+    e=e||{};
+    const m=U.modal(e.ID_EVENTO?'Editar evento':'Novo evento',`
+      <div class="form-grid">
+        ${field('Nome','evNome',e.NOME,'text',true)}${field('Subtítulo','evSub',e.SUBTITULO)}
+        ${field('Data','evData',e.DATA,'date')}${field('Local','evLocal',e.LOCAL)}
+        ${field('Hora de início','evIni',e.HORA_INICIO,'time')}${field('Hora de término','evFim',e.HORA_FIM,'time')}
+        ${selectField('Modo padrão','evModo',['FIXO','RESERVA','LIVRE','HIBRIDO'],e.MODO_PADRAO||'HIBRIDO')}
+        <div class="field"><label>Status</label><div style="padding:10px 0">${U.badgeStatus(e.STATUS||'RASCUNHO')}</div><div class="small muted">O evento ativo é definido pelo botão “Ativar este evento”. Trocar o evento em edição não altera o evento operacional.</div></div>
+        <div class="field" style="grid-column:1/-1"><label>URL do banner</label><input id="evBanner" value="${U.esc(e.BANNER_URL||'')}"></div>
+        <div class="field" style="grid-column:1/-1"><label>Observações</label><textarea id="evObs">${U.esc(e.OBSERVACOES||'')}</textarea></div>
+      </div>`, `<button class="btn" data-close>Cancelar</button><button class="btn btn-primary" data-save>Salvar</button>`);
+    m.querySelector('[data-save]').onclick=async ev=>{
+      const btn=ev.currentTarget; U.setBusy(btn,true);
+      try{
+        const payload={ID_EVENTO:e.ID_EVENTO||'',NOME:U.$('#evNome',m).value.trim(),SUBTITULO:U.$('#evSub',m).value.trim(),DATA:U.$('#evData',m).value,HORA_INICIO:U.$('#evIni',m).value,HORA_FIM:U.$('#evFim',m).value,LOCAL:U.$('#evLocal',m).value.trim(),MODO_PADRAO:U.$('#evModo',m).value,BANNER_URL:U.$('#evBanner',m).value.trim(),OBSERVACOES:U.$('#evObs',m).value.trim()};
+        if(!payload.NOME) throw new Error('Informe o nome do evento.');
+        const r=await A.call('saveEvent',payload); state.eventId=r.event.ID_EVENTO; try{localStorage.setItem('sgces_selected_event',state.eventId);}catch(err){} m.remove(); await bootstrap(); U.toast('Evento salvo.','success');
+      }catch(err){U.toast(err.message,'error');}finally{U.setBusy(btn,false);}
+    };
+  }
+
+  function renderConvidados(){
+    const c=U.$('[data-section="convidados"]'); if(requireEvent(c,'Convidados'))return;
+    const guests=state.data.guests||[];
+    c.innerHTML=heading('Convidados','Cadastro, autoridades, acompanhantes e posição no evento.',`<button class="btn" data-import>Importar lista</button><button class="btn btn-primary" data-add>Adicionar convidado</button>`)+`
+      <div class="card">
+        <div class="section-actions"><input id="guestSearch" class="search-input" placeholder="Buscar por nome, posto, cargo, OM ou mesa" style="max-width:520px"><span class="muted small">${guests.length} registro(s)</span></div>
+        <div id="guestTable"></div>
+      </div>`;
+    c.querySelector('[data-add]').onclick=()=>guestModal();
+    c.querySelector('[data-import]').onclick=()=>importModal();
+    const search=U.$('#guestSearch',c); search.addEventListener('input',()=>renderGuestRows(search.value));
+    renderGuestRows('');
+  }
+
+  function renderGuestRows(q){
+    const root=U.$('#guestTable'); if(!root)return;
+    const n=U.normalize(q); let rows=(state.data.guests||[]).filter(g=>!n||U.normalize([g.NOME_COMPLETO,g.NOME_GUERRA,g.POSTO_GRAD,g.CARGO,g.OM_ORGAO,tableFor(g.MESA_ID)?.NOME].join(' ')).includes(n));
+    root.innerHTML=rows.length?`<div class="table-wrap"><table><thead><tr><th>Convidado</th><th>Cargo / OM</th><th>Mesa</th><th>RSVP</th><th>Chegada</th><th>Código</th><th></th></tr></thead><tbody>${rows.map(g=>`<tr>
+      <td><strong>${U.esc(U.displayName(g))}</strong>${U.yes(g.AUTORIDADE_INTERESSE)?'<div><span class="badge info">AUTORIDADE DE INTERESSE</span></div>':''}</td>
+      <td>${U.esc(g.CARGO||'')}<div class="small muted">${U.esc(g.OM_ORGAO||'')}</div></td><td>${U.esc(tableFor(g.MESA_ID)?.NOME||'—')}${g.ASSENTO?`<div class="small muted">${U.esc(g.ASSENTO)}</div>`:''}</td><td>${U.badgeStatus(g.RSVP)}</td><td>${U.badgeStatus(g.CHECKIN)}</td><td class="nowrap">${U.esc(g.CODIGO_CONVIDADO||'')}</td>
+      <td class="nowrap"><button class="btn btn-sm" data-edit-g="${U.esc(g.ID_CONVIDADO)}">Editar</button> <button class="btn btn-sm btn-danger" data-del-g="${U.esc(g.ID_CONVIDADO)}">Excluir</button></td></tr>`).join('')}</tbody></table></div>`:'<p class="muted">Nenhum convidado encontrado.</p>';
+    root.querySelectorAll('[data-edit-g]').forEach(b=>b.onclick=()=>guestModal(guestById(b.dataset.editG)));
+    root.querySelectorAll('[data-del-g]').forEach(b=>b.onclick=()=>{const g=guestById(b.dataset.delG);if(confirm(`Excluir ${g.NOME_COMPLETO}?`))runBusy(async()=>{await A.call('deleteGuest',{guestId:g.ID_CONVIDADO});await loadEvent();U.toast('Convidado excluído.','success');});});
+  }
+
+  function guestModal(g){
+    g=g||{};
+    const tableOptions=['<option value="">Sem mesa</option>'].concat((state.data.tables||[]).map(t=>`<option value="${U.esc(t.ID_MESA)}" ${String(t.ID_MESA)===String(g.MESA_ID)?'selected':''}>${U.esc(t.NOME)} (${U.num(t.OCUPACAO)}/${U.num(t.CAPACIDADE)})</option>`)).join('');
+    const m=U.modal(g.ID_CONVIDADO?'Editar convidado':'Adicionar convidado',`
+      <div class="form-grid-3">
+        <div class="field" style="grid-column:span 2"><label>Nome completo</label><input id="gNome" value="${U.esc(g.NOME_COMPLETO||'')}"></div>
+        ${field('Nome de guerra','gGuerra',g.NOME_GUERRA)}
+        ${field('Posto / Graduação','gPosto',g.POSTO_GRAD)}${field('Cargo','gCargo',g.CARGO)}${field('OM / Órgão','gOm',g.OM_ORGAO)}
+        ${selectField('Sexo','gSexo',['','MASCULINO','FEMININO'],g.SEXO||'')}${field('Vocativo','gVoc',g.VOCATIVO)}${field('Precedência','gPrec',g.PRECEDENCIA,'number')}
+        ${field('E-mail','gEmail',g.EMAIL,'email')}${field('Telefone','gTel',g.TELEFONE)}${selectField('Tipo','gTipo',['TITULAR','ACOMPANHANTE','CONVIDADO'],g.TIPO||'TITULAR')}
+        ${selectField('Autoridade de interesse','gAut',['NAO','SIM'],g.AUTORIDADE_INTERESSE||'NAO')}${selectField('Nível operacional','gNivel',['CONVIDADO','AUTORIDADE','ESPECIAL'],g.NIVEL_INTERESSE||'CONVIDADO')}${selectField('RSVP','gRsvp',['PENDENTE','CONFIRMADO','NÃO COMPARECERÁ'],g.RSVP||'PENDENTE')}
+        <div class="field"><label>Mesa</label><select id="gMesa">${tableOptions}</select></div>${field('Assento / posição','gSeat',g.ASSENTO)}${field('Código do convidado','gCode',g.CODIGO_CONVIDADO)}
+        <div class="field" style="grid-column:span 2"><label>URL da foto</label><input id="gFoto" value="${U.esc(g.FOTO_URL||'')}"></div>
+        <div class="field"><label>Vinculado ao titular (ID)</label><input id="gTit" value="${U.esc(g.ID_TITULAR||'')}"></div>
+        ${!g.ID_CONVIDADO?'<div class="field" style="grid-column:span 2"><label>Acompanhante (opcional)</label><input id="gAcomp" placeholder="Nome completo do acompanhante"></div><div class="field"><label>Sexo acompanhante</label><select id="gAcompSexo"><option></option><option>MASCULINO</option><option>FEMININO</option></select></div>':''}
+        <div class="field" style="grid-column:1/-1"><label>Observação da recepção</label><textarea id="gObs">${U.esc(g.OBS_RECEPCAO||'')}</textarea></div>
+      </div>`, `<button class="btn" data-close>Cancelar</button><button class="btn btn-primary" data-save>Salvar</button>`);
+    m.querySelector('[data-save]').onclick=async ev=>{
+      const btn=ev.currentTarget;U.setBusy(btn,true);
+      try{
+        const p={ID_CONVIDADO:g.ID_CONVIDADO||'',ID_PESSOA:g.ID_PESSOA||'',eventId:state.eventId,nomeCompleto:U.$('#gNome',m).value.trim(),nomeGuerra:U.$('#gGuerra',m).value.trim(),postoGrad:U.$('#gPosto',m).value.trim(),cargo:U.$('#gCargo',m).value.trim(),omOrgao:U.$('#gOm',m).value.trim(),sexo:U.$('#gSexo',m).value,vocativo:U.$('#gVoc',m).value.trim(),precedencia:U.$('#gPrec',m).value,email:U.$('#gEmail',m).value.trim(),telefone:U.$('#gTel',m).value.trim(),tipo:U.$('#gTipo',m).value,autoridadeInteresse:U.$('#gAut',m).value,nivelInteresse:U.$('#gNivel',m).value,rsvp:U.$('#gRsvp',m).value,mesaId:U.$('#gMesa',m).value,assento:U.$('#gSeat',m).value.trim(),codigoConvidado:U.$('#gCode',m).value.trim(),fotoUrl:U.$('#gFoto',m).value.trim(),idTitular:U.$('#gTit',m).value.trim(),obsRecepcao:U.$('#gObs',m).value.trim()};
+        if(!g.ID_CONVIDADO){p.acompanhanteNome=U.$('#gAcomp',m).value.trim();p.acompanhanteSexo=U.$('#gAcompSexo',m).value;}
+        if(!p.nomeCompleto)throw new Error('Informe o nome completo.');
+        await A.call('saveGuest',p);m.remove();await loadEvent();U.toast('Convidado salvo.','success');
+      }catch(err){U.toast(err.message,'error');}finally{U.setBusy(btn,false);}
+    };
+  }
+
+  function importModal(){
+    const m=U.modal('Importar convidados',`<p class="muted">Cole dados de Excel/Sheets com cabeçalho. Colunas reconhecidas: NOME, POSTO, CARGO, OM, SEXO, EMAIL, TELEFONE, PRECEDENCIA, AUTORIDADE, NIVEL, RSVP, MESA, ACOMPANHANTE.</p><div class="field"><label>Dados</label><textarea id="impText" style="min-height:280px" placeholder="NOME\tPOSTO\tCARGO\tOM\nFulano de Tal\tCel Av\tComandante\t... "></textarea></div><div id="impStatus" class="small muted" style="margin-top:8px"></div>`, `<button class="btn" data-close>Cancelar</button><button class="btn btn-primary" data-import-now>Importar</button>`);
+    m.querySelector('[data-import-now]').onclick=async ev=>{
+      const btn=ev.currentTarget;U.setBusy(btn,true,'Importando');
+      try{
+        const rows=parseImport(U.$('#impText',m).value); if(!rows.length)throw new Error('Nenhuma linha válida.');
+        let total=0; for(let i=0;i<rows.length;i+=8){
+          U.$('#impStatus',m).textContent=`Importando ${Math.min(i+8,rows.length)} de ${rows.length}...`;
+          const r=await A.call('importGuests',{eventId:state.eventId,rows:rows.slice(i,i+8)},45000); total+=U.num(r.imported);
+        }
+        m.remove();await loadEvent();U.toast(`${total} convidado(s) importado(s).`,'success');
+      }catch(err){U.toast(err.message,'error');}finally{U.setBusy(btn,false);}
+    };
+  }
+
+  function parseImport(text){
+    const lines=String(text||'').trim().split(/\r?\n/).filter(Boolean); if(lines.length<2)return[];
+    const delim=lines[0].includes('\t')?'\t':lines[0].includes(';')?';':',';
+    const h=lines[0].split(delim).map(x=>U.normalize(x).replace(/[^a-z0-9]/g,''));
+    const pick=(obj,names)=>{for(const n of names){const idx=h.indexOf(n);if(idx>=0)return obj[idx]||'';}return'';};
+    return lines.slice(1).map(line=>line.split(delim)).filter(r=>r.some(Boolean)).map(r=>{
+      const mesaTxt=pick(r,['mesa','numeromesa']); const mesa=(state.data.tables||[]).find(t=>String(t.NUMERO)===String(mesaTxt)||U.normalize(t.NOME)===U.normalize(mesaTxt));
+      return {nomeCompleto:pick(r,['nome','nomecompleto']),postoGrad:pick(r,['posto','postograd','postograduacao']),cargo:pick(r,['cargo','funcao']),omOrgao:pick(r,['om','orgao','omorgao']),sexo:pick(r,['sexo']),email:pick(r,['email']),telefone:pick(r,['telefone','celular']),precedencia:pick(r,['precedencia','ordemprecedencia']),autoridadeInteresse:/^(sim|s|1|true)$/i.test(pick(r,['autoridade','autoridadeinteresse']))?'SIM':'NAO',nivelInteresse:pick(r,['nivel','nivelinteresse'])||'CONVIDADO',rsvp:pick(r,['rsvp','status'])||'PENDENTE',mesaId:mesa?mesa.ID_MESA:'',acompanhanteNome:pick(r,['acompanhante','nomeacompanhante'])};
+    }).filter(x=>x.nomeCompleto);
+  }
+
+  function renderMesas(){
+    const c=U.$('[data-section="mesas"]');if(requireEvent(c,'Mesas'))return;
+    const tables=state.data.tables||[];
+    c.innerHTML=heading('Mesas','Capacidade, forma, política de ocupação e regras cerimoniais.',`<button class="btn btn-primary" data-add>Adicionar mesa</button>`)+`<div class="card">${tables.length?`<div class="table-wrap"><table><thead><tr><th>Mesa</th><th>Formato</th><th>Alocação</th><th>Ocupação</th><th>ICA</th><th>Principal</th><th></th></tr></thead><tbody>${tables.map(t=>`<tr><td><strong>${U.esc(t.NOME)}</strong><div class="small muted">Nº ${U.esc(t.NUMERO||'—')}</div></td><td>${U.esc(t.FORMATO)}</td><td>${U.esc(t.TIPO_ALOCACAO)}</td><td>${U.num(t.OCUPACAO)}/${U.num(t.CAPACIDADE)} <span class="small muted">(${U.num(t.VAGAS)} vaga(s))</span></td><td>${U.badgeStatus(t.USA_ICA)}</td><td>${U.badgeStatus(t.PRINCIPAL)}</td><td class="nowrap"><button class="btn btn-sm" data-edit="${U.esc(t.ID_MESA)}">Editar</button> <button class="btn btn-sm btn-danger" data-del="${U.esc(t.ID_MESA)}">Excluir</button></td></tr>`).join('')}</tbody></table></div>`:'<p class="muted">Nenhuma mesa criada.</p>'}</div>`;
+    c.querySelector('[data-add]').onclick=()=>tableModal();
+    c.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>tableModal(tableById(b.dataset.edit)));
+    c.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{const t=tableById(b.dataset.del);if(confirm(`Excluir ${t.NOME}? Os convidados ficarão sem mesa.`))runBusy(async()=>{await A.call('deleteTable',{tableId:t.ID_MESA});await loadEvent();});});
+  }
+
+  function tableModal(t){
+    t=t||{}; const guestOpts=['<option value="">—</option>'].concat((state.data.guests||[]).sort(U.byPrecedence).map(g=>`<option value="${U.esc(g.ID_CONVIDADO)}">${U.esc(U.displayName(g))}</option>`)).join('');
+    const m=U.modal(t.ID_MESA?'Editar mesa':'Adicionar mesa',`
+      <div class="form-grid-3">
+        ${field('Número','mNum',t.NUMERO,'number')}${field('Nome','mNome',t.NOME)}${field('Capacidade','mCap',t.CAPACIDADE||8,'number')}
+        ${selectField('Formato','mFormato',['REDONDA','RETANGULAR','U'],t.FORMATO||'REDONDA')}${selectField('Tipo de alocação','mTipo',['FIXO','RESERVA','LIVRE','HIBRIDO'],t.TIPO_ALOCACAO||'FIXO')}${selectField('Mesa de autoridades','mAut',['NAO','SIM'],t.MESA_AUTORIDADES||'NAO')}
+        ${selectField('Mesa principal','mPrincipal',['NAO','SIM'],t.PRINCIPAL||'NAO')}${selectField('Usar ICA 908-1','mIca',['NAO','SIM'],t.USA_ICA||'NAO')}${selectField('Composição','mComp',['DESACOMPANHADOS','CASAIS'],t.COMPOSICAO||'DESACOMPANHADOS')}
+        ${selectField('Usar cabeceiras','mCab',['NAO','SIM'],t.CABECEIRAS||'NAO')}${selectField('Anfitrião é maior precedência','mHostHigh',['SIM','NAO'],t.ANFITRIAO_MAIOR_PRECEDENCIA||'SIM')}
+        <div class="field"><label>Anfitrião</label><select id="mHost">${guestOpts}</select></div>
+        <div class="field"><label>Homenageado</label><select id="mHon">${guestOpts}</select></div>${field('Rotação no croqui','mRot',t.ROTACAO||0,'number')}${field('Largura (%)','mW',t.W||'','number')}${field('Altura (%)','mH',t.H||'','number')}
+        <div class="field" style="grid-column:1/-1"><label>Observações</label><textarea id="mObs">${U.esc(t.OBS||'')}</textarea></div>
+      </div>`, `<button class="btn" data-close>Cancelar</button><button class="btn btn-primary" data-save>Salvar</button>`);
+    U.$('#mHost',m).value=t.ANFITRIAO_ID||'';U.$('#mHon',m).value=t.HOMENAGEADO_ID||'';
+    m.querySelector('[data-save]').onclick=async ev=>{
+      const btn=ev.currentTarget;U.setBusy(btn,true);
+      try{
+        const p={ID_MESA:t.ID_MESA||'',eventId:state.eventId,numero:U.$('#mNum',m).value,nome:U.$('#mNome',m).value.trim(),capacidade:U.$('#mCap',m).value,formato:U.$('#mFormato',m).value,tipoAlocacao:U.$('#mTipo',m).value,mesaAutoridades:U.$('#mAut',m).value,principal:U.$('#mPrincipal',m).value,usaIca:U.$('#mIca',m).value,composicao:U.$('#mComp',m).value,cabeceiras:U.$('#mCab',m).value,anfitriaoMaiorPrecedencia:U.$('#mHostHigh',m).value,anfitriaoId:U.$('#mHost',m).value,homenageadoId:U.$('#mHon',m).value,rotacao:U.$('#mRot',m).value,w:U.$('#mW',m).value,h:U.$('#mH',m).value,obs:U.$('#mObs',m).value.trim()};
+        if(!p.nome)p.nome='Mesa '+(p.numero||''); if(!p.capacidade||Number(p.capacidade)<1)throw new Error('Capacidade inválida.');
+        await A.call('saveTable',p);m.remove();await loadEvent();U.toast('Mesa salva.','success');
+      }catch(err){U.toast(err.message,'error');}finally{U.setBusy(btn,false);}
+    };
+  }
+
+  function renderCroqui(){
+    const c=U.$('[data-section="croqui"]');if(requireEvent(c,'Croqui'))return;
+    c.innerHTML=heading('Croqui','Arraste as mesas para organizar o salão. O mesmo croqui é usado na Recepção, Portal do Convidado e TV.',`<button class="btn btn-primary" data-save-layout>Salvar posições</button>`)+`
+      <div class="card"><div class="floor-toolbar"><span class="muted small">Arraste as mesas. Para alterar tamanho ou rotação, edite a mesa.</span></div><div class="floor-wrap"><div id="editorFloor" class="floor"></div></div></div>`;
+    const floor=U.$('#editorFloor',c); U.renderFloor(floor,state.data.tables||[],{}); enableDrag(floor);
+    c.querySelector('[data-save-layout]').onclick=()=>saveFloorLayout(floor);
+  }
+
+  function enableDrag(floor){
+    floor.querySelectorAll('.floor-table').forEach(el=>{
+      let start=null;
+      el.addEventListener('pointerdown',e=>{e.preventDefault();el.setPointerCapture(e.pointerId);start={x:e.clientX,y:e.clientY,left:parseFloat(el.style.left),top:parseFloat(el.style.top)};el.classList.add('dragging');});
+      el.addEventListener('pointermove',e=>{if(!start)return;const r=floor.getBoundingClientRect();const dx=(e.clientX-start.x)/r.width*100,dy=(e.clientY-start.y)/r.height*100;el.style.left=Math.max(3,Math.min(97,start.left+dx))+'%';el.style.top=Math.max(3,Math.min(97,start.top+dy))+'%';});
+      const end=()=>{start=null;el.classList.remove('dragging');}; el.addEventListener('pointerup',end);el.addEventListener('pointercancel',end);
+    });
+  }
+  async function saveFloorLayout(floor){
+    const tables=Array.from(floor.querySelectorAll('.floor-table')).map(el=>({id:el.dataset.id,x:parseFloat(el.style.left),y:parseFloat(el.style.top)}));
+    await runBusy(async()=>{await A.call('saveLayout',{tables});await loadEvent();U.toast('Croqui salvo.','success');});
+  }
+
+  function renderCerimonial(){
+    const c=U.$('[data-section="cerimonial"]');if(requireEvent(c,'Cerimonial'))return;
+    const tables=(state.data.tables||[]).filter(t=>U.yes(t.USA_ICA));
+    if(!state.selectedCerimonialTable && tables.length)state.selectedCerimonialTable=tables[0].ID_MESA;
+    const t=tableById(state.selectedCerimonialTable); const seated=t?(state.data.guests||[]).filter(g=>String(g.MESA_ID)===String(t.ID_MESA)):[];
+    c.innerHTML=heading('Cerimonial','Composição das mesas conforme o motor baseado no extrato da ICA 908-1.',t?`<button class="btn" data-clear>Limpar assentos</button><button class="btn btn-primary" data-compose>Compor pela ICA</button>`:'')+`
+      <div class="grid grid-2" style="grid-template-columns:320px 1fr">
+        <div class="card"><h3>Mesas com ICA</h3>${tables.length?tables.map(x=>`<button class="btn ${String(x.ID_MESA)===String(state.selectedCerimonialTable)?'btn-soft':''}" style="width:100%;margin-bottom:7px;justify-content:flex-start" data-ct="${U.esc(x.ID_MESA)}">${U.esc(x.NOME)} • ${U.esc(x.FORMATO)}</button>`).join(''):'<p class="muted">Marque “Usar ICA 908-1” na configuração de uma mesa.</p>'}</div>
+        <div class="card">${t?`<div class="section-actions"><div><h3 style="margin:0">${U.esc(t.NOME)}</h3><div class="small muted">${U.esc(t.FORMATO)} • ${U.esc(t.COMPOSICAO)} • ${seated.length}/${U.num(t.CAPACIDADE)} convidados</div></div><button class="btn btn-sm" data-edit-table>Editar configuração</button></div><div class="seating-stage" id="seatingStage"></div><div class="small muted" style="margin-top:10px">Para capacidades diferentes das ilustrações do extrato, o motor prolonga o padrão geométrico da ICA. Assentos podem ser ajustados manualmente no cadastro do convidado.</div>`:'<p class="muted">Selecione uma mesa.</p>'}</div>
+      </div>`;
+    c.querySelectorAll('[data-ct]').forEach(b=>b.onclick=()=>{state.selectedCerimonialTable=b.dataset.ct;renderCerimonial();});
+    if(t){
+      U.renderSeating(U.$('#seatingStage',c),t,seated);
+      c.querySelector('[data-edit-table]').onclick=()=>tableModal(t);
+      c.querySelector('[data-compose]').onclick=()=>runBusy(async()=>{await A.call('composeTable',{tableId:t.ID_MESA},45000);await loadEvent();renderCerimonial();U.toast('Mesa composta pela ICA.','success');});
+      c.querySelector('[data-clear]').onclick=()=>runBusy(async()=>{await A.call('clearTableSeats',{tableId:t.ID_MESA});await loadEvent();renderCerimonial();});
+    }
+  }
+
+  function renderNominata(){
+    const c=U.$('[data-section="nominata"]');if(requireEvent(c,'Nominata'))return;
+    const list=(state.data.guests||[]).filter(g=>U.yes(g.AUTORIDADE_INTERESSE)).sort(U.byPrecedence);
+    c.innerHTML=heading('Nominata','Autoridades de interesse e controle de chegada.',`<button class="btn" data-print>Imprimir</button>`)+`<div class="card">${list.length?`<div class="table-wrap"><table><thead><tr><th>Ord.</th><th>Autoridade</th><th>Cargo</th><th>Mesa</th><th>RSVP</th><th>Chegada</th><th></th></tr></thead><tbody>${list.map((g,i)=>`<tr><td>${U.esc(g.ORDEM_PRECEDENCIA||g.PRECEDENCIA||i+1)}</td><td><strong>${U.esc(U.displayName(g))}</strong></td><td>${U.esc(g.CARGO||'')}</td><td>${U.esc(tableFor(g.MESA_ID)?.NOME||'—')}</td><td>${U.badgeStatus(g.RSVP)}</td><td>${U.badgeStatus(g.CHECKIN)}${g.HORARIO_CHECKIN?`<div class="small muted">${U.fmtTime(g.HORARIO_CHECKIN)}</div>`:''}</td><td><button class="btn btn-sm ${String(g.CHECKIN).toUpperCase()==='PRESENTE'?'':'btn-success'}" data-check="${U.esc(g.ID_CONVIDADO)}">${String(g.CHECKIN).toUpperCase()==='PRESENTE'?'Desfazer':'Confirmar chegada'}</button></td></tr>`).join('')}</tbody></table></div>`:'<p class="muted">Nenhuma autoridade marcada como “Autoridade de interesse”.</p>'}</div>`;
+    c.querySelectorAll('[data-check]').forEach(b=>b.onclick=()=>{const g=guestById(b.dataset.check);runBusy(async()=>{await A.call('checkIn',{guestId:g.ID_CONVIDADO,present:String(g.CHECKIN).toUpperCase()!=='PRESENTE'});await loadEvent();renderNominata();});});
+    c.querySelector('[data-print]').onclick=()=>window.print();
+  }
+
+  function renderConteudos(){
+    const c=U.$('[data-section="conteudos"]');if(requireEvent(c,'Conteúdos'))return;
+    const cont=state.data.contents||[], sp=state.data.sponsors||[];
+    c.innerHTML=heading('Conteúdos','Arquivos do portal do convidado, banner e patrocinadores.',`<button class="btn" data-add-content>Adicionar conteúdo</button><button class="btn btn-primary" data-add-sponsor>Adicionar patrocinador</button>`)+`
+      <div class="grid grid-2"><div class="card"><h3>Arquivos e informações</h3>${cont.length?`<div class="table-wrap"><table><thead><tr><th>Tipo</th><th>Título</th><th>Visível</th><th></th></tr></thead><tbody>${cont.map(x=>`<tr><td>${U.esc(x.TIPO)}</td><td><a href="${U.esc(x.URL)}" target="_blank">${U.esc(x.TITULO)}</a></td><td>${U.badgeStatus(x.VISIVEL)}</td><td><button class="btn btn-sm" data-ec="${U.esc(x.ID_CONTEUDO)}">Editar</button> <button class="btn btn-sm btn-danger" data-dc="${U.esc(x.ID_CONTEUDO)}">Excluir</button></td></tr>`).join('')}</tbody></table></div>`:'<p class="muted">Nenhum conteúdo.</p>'}</div>
+      <div class="card"><h3>Patrocinadores / apoiadores</h3>${sp.length?`<div class="sponsor-row">${sp.map(x=>`<div style="text-align:center"><img src="${U.esc(U.driveImage(x.LOGO_URL))}" alt="${U.esc(x.NOME)}"><div class="small">${U.esc(x.NOME)}</div><div><button class="btn btn-sm" data-es="${U.esc(x.ID_PATROCINADOR)}">Editar</button> <button class="btn btn-sm btn-danger" data-ds="${U.esc(x.ID_PATROCINADOR)}">Excluir</button></div></div>`).join('')}</div>`:'<p class="muted">Nenhum patrocinador.</p>'}</div></div>`;
+    c.querySelector('[data-add-content]').onclick=()=>contentModal();c.querySelector('[data-add-sponsor]').onclick=()=>sponsorModal();
+    c.querySelectorAll('[data-ec]').forEach(b=>b.onclick=()=>contentModal(cont.find(x=>x.ID_CONTEUDO===b.dataset.ec)));
+    c.querySelectorAll('[data-dc]').forEach(b=>b.onclick=()=>{if(confirm('Excluir conteúdo?'))runBusy(async()=>{await A.call('deleteContent',{id:b.dataset.dc});await loadEvent();});});
+    c.querySelectorAll('[data-es]').forEach(b=>b.onclick=()=>sponsorModal(sp.find(x=>x.ID_PATROCINADOR===b.dataset.es)));
+    c.querySelectorAll('[data-ds]').forEach(b=>b.onclick=()=>{if(confirm('Excluir patrocinador?'))runBusy(async()=>{await A.call('deleteSponsor',{id:b.dataset.ds});await loadEvent();});});
+  }
+
+  function contentModal(x){x=x||{};const m=U.modal(x.ID_CONTEUDO?'Editar conteúdo':'Adicionar conteúdo',`<div class="form-grid">${field('Título','cTit',x.TITULO)}${selectField('Tipo','cTipo',['CARDAPIO','PROGRAMA','HOMENAGEM','ARQUIVO'],x.TIPO||'ARQUIVO')}<div class="field" style="grid-column:1/-1"><label>URL do arquivo / página</label><input id="cUrl" value="${U.esc(x.URL||'')}"></div>${field('Ordem','cOrd',x.ORDEM||0,'number')}${selectField('Visível','cVis',['SIM','NAO'],x.VISIVEL||'SIM')}</div>`,`<button class="btn" data-close>Cancelar</button><button class="btn btn-primary" data-save>Salvar</button>`);m.querySelector('[data-save]').onclick=async e=>{const b=e.currentTarget;U.setBusy(b,true);try{await A.call('saveContent',{id:x.ID_CONTEUDO||'',eventId:state.eventId,titulo:U.$('#cTit',m).value.trim(),tipo:U.$('#cTipo',m).value,url:U.$('#cUrl',m).value.trim(),ordem:U.$('#cOrd',m).value,visivel:U.$('#cVis',m).value});m.remove();await loadEvent();}catch(err){U.toast(err.message,'error');}finally{U.setBusy(b,false);}};}
+  function sponsorModal(x){x=x||{};const m=U.modal(x.ID_PATROCINADOR?'Editar patrocinador':'Adicionar patrocinador',`<div class="form-grid">${field('Nome','sNome',x.NOME)}<div class="field"><label>URL da logo</label><input id="sLogo" value="${U.esc(x.LOGO_URL||'')}"></div><div class="field" style="grid-column:1/-1"><label>Site (opcional)</label><input id="sSite" value="${U.esc(x.URL_SITE||'')}"></div>${field('Ordem','sOrd',x.ORDEM||0,'number')}${selectField('Visível','sVis',['SIM','NAO'],x.VISIVEL||'SIM')}</div>`,`<button class="btn" data-close>Cancelar</button><button class="btn btn-primary" data-save>Salvar</button>`);m.querySelector('[data-save]').onclick=async e=>{const b=e.currentTarget;U.setBusy(b,true);try{await A.call('saveSponsor',{id:x.ID_PATROCINADOR||'',eventId:state.eventId,nome:U.$('#sNome',m).value.trim(),logoUrl:U.$('#sLogo',m).value.trim(),urlSite:U.$('#sSite',m).value.trim(),ordem:U.$('#sOrd',m).value,visivel:U.$('#sVis',m).value});m.remove();await loadEvent();}catch(err){U.toast(err.message,'error');}finally{U.setBusy(b,false);}};}
+
+  function renderAcessos(){
+    const c=U.$('[data-section="acessos"]');if(requireEvent(c,'Acessos'))return;
+    const base=location.href.replace(/[^\/]*([?#].*)?$/,'');
+    const evt='?evento='+encodeURIComponent(state.eventId);
+    const urls=[['Recepção',base+'recepcao.html'+evt,'Interface operacional deste evento para pesquisa, chegada, nominata e croqui.'],['Portal do convidado',base+'convidado.html'+evt,'Portal deste evento para código individual, reserva e QR de mesa.'],['Painel da TV',base+'tv.html'+evt,'Painel deste evento com croqui, ocupação e últimas chegadas.']];
+    const tableLinks=(state.data.tables||[]).map(t=>({name:t.NOME,url:base+'convidado.html?evento='+encodeURIComponent(state.eventId)+'&mesa='+encodeURIComponent(t.ID_MESA)}));
+    c.innerHTML=heading('Acessos','Os links abaixo já estão vinculados ao evento em edição. O evento ativo só é usado quando uma página é aberta sem parâmetro de evento.')+`<div class="grid grid-3">${urls.map(([n,u,d])=>`<div class="card"><h3>${U.esc(n)}</h3><p class="muted">${U.esc(d)}</p><div class="field"><input readonly value="${U.esc(u)}"></div><div class="actions" style="margin-top:10px"><button class="btn" data-copy="${U.esc(u)}">Copiar link</button><a class="btn btn-primary" href="${U.esc(u)}" target="_blank">Abrir</a></div></div>`).join('')}</div><div class="card" style="margin-top:16px"><h3>Links para QR Codes</h3><p>O código individual é gerado automaticamente. Os QR Codes de mesa ficam vinculados também ao evento correto.</p><div class="table-wrap"><table><thead><tr><th>Uso</th><th>Link</th><th></th></tr></thead><tbody><tr><td>Exemplo de convidado</td><td><code>${U.esc(base+'convidado.html?evento='+encodeURIComponent(state.eventId)+'&c=8F37K2A1')}</code></td><td></td></tr>${tableLinks.map(x=>`<tr><td>${U.esc(x.name)}</td><td><code>${U.esc(x.url)}</code></td><td><button class="btn btn-sm" data-copy="${U.esc(x.url)}">Copiar</button></td></tr>`).join('')}</tbody></table></div><p class="small muted">Ao escanear o QR de uma mesa, o portal confirma a mesa do convidado. Se o dispositivo ainda não conhecê-lo, solicita primeiro o código individual.</p></div>`;
+    c.querySelectorAll('[data-copy]').forEach(b=>b.onclick=async()=>{try{await navigator.clipboard.writeText(b.dataset.copy);U.toast('Link copiado.','success');}catch(e){U.toast('Não foi possível copiar automaticamente.','error');}});
+  }
+
+  function field(label,id,value,type,required){return `<div class="field"><label>${U.esc(label)}</label><input id="${id}" type="${type||'text'}" value="${U.esc(value||'')}" ${required?'required':''}></div>`;}
+  function selectField(label,id,opts,value){return `<div class="field"><label>${U.esc(label)}</label><select id="${id}">${opts.map(o=>`<option value="${U.esc(o)}" ${String(o)===String(value)?'selected':''}>${U.esc(o||'—')}</option>`).join('')}</select></div>`;}
+  function guestById(id){return (state.data.guests||[]).find(x=>String(x.ID_CONVIDADO)===String(id));}
+  function tableById(id){return (state.data.tables||[]).find(x=>String(x.ID_MESA)===String(id));}
+  function tableFor(id){return tableById(id);}
+  async function runBusy(fn,label){
+    const s=U.$('#syncStatus');if(s){s.innerHTML='<span class="spinner"></span> '+(label||'Atualizando');}
+    try{return await fn();}catch(err){console.error(err);U.toast(err.message||String(err),'error');}finally{if(s)s.textContent='Pronto';}
+  }
+})();
+
+</script>
 </body>
 </html>
