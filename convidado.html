@@ -128,9 +128,8 @@ tr:hover td{background:#fbfdff}
 .table-shape.round{width:230px;height:230px;border-radius:50%}
 .table-shape.rect{width:470px;height:150px;border-radius:8px}
 .table-shape.u{width:410px;height:250px;border:20px solid #64748b;border-top:0;background:transparent;border-radius:0 0 12px 12px}
-.seat{position:absolute;transform:translate(-50%,-50%);width:130px;min-height:52px;border:1px solid #cbd5e1;background:#fff;border-radius:10px;padding:6px;text-align:center;font-size:.75rem;box-shadow:0 3px 9px rgba(15,23,42,.06)}
-.seat strong{display:block;font-size:.79rem}
-.seat .seat-code{font-size:.65rem;color:var(--muted)}
+.seat{position:absolute;transform:translate(-50%,-50%);width:48px;height:118px;border:1px solid #cbd5e1;background:#fff;border-radius:9px;padding:0;text-align:center;font-size:.74rem;box-shadow:0 3px 9px rgba(15,23,42,.06);display:flex;align-items:center;justify-content:center;overflow:visible}
+.seat .seat-vertical{width:106px;white-space:nowrap;transform:rotate(-90deg);transform-origin:center;font-weight:800;font-size:.76rem;line-height:1}
 
 /* recepção */
 .public-shell{min-height:100vh;background:var(--bg)}
@@ -287,20 +286,28 @@ tr:hover td{background:#fbfdff}
   const num = (v,d=0)=>{ const n=Number(v); return Number.isFinite(n)?n:d; };
   const fmtDate = v=>{
     if(!v) return '';
-    const d = new Date(v);
-    if(Number.isNaN(d.getTime())) return String(v);
-    return new Intl.DateTimeFormat('pt-BR',{dateStyle:'short'}).format(d);
+    const s=String(v).trim();
+    let m=s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if(m) return `${m[3]}/${m[2]}/${m[1]}`;
+    m=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    if(m) return `${String(m[1]).padStart(2,'0')}/${String(m[2]).padStart(2,'0')}/${m[3]}`;
+    const d=new Date(v);
+    if(Number.isNaN(d.getTime())) return s;
+    return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
   };
   const fmtTime = v=>{
     if(!v) return '';
-    const d = new Date(v);
-    if(Number.isNaN(d.getTime())) return String(v).slice(0,5);
-    return new Intl.DateTimeFormat('pt-BR',{hour:'2-digit',minute:'2-digit'}).format(d);
+    const s=String(v).trim();
+    const m=s.match(/(?:^|T)(\d{1,2}):(\d{2})/);
+    if(m) return `${String(m[1]).padStart(2,'0')}:${m[2]}`;
+    const d=new Date(v);
+    if(Number.isNaN(d.getTime())) return s.slice(0,5);
+    return new Intl.DateTimeFormat('pt-BR',{hour:'2-digit',minute:'2-digit',hour12:false}).format(d);
   };
   const normalize = s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
   const byPrecedence = (a,b)=>{
-    const pa=num(a.ORDEM_PRECEDENCIA||a.PRECEDENCIA,999999)||999999;
-    const pb=num(b.ORDEM_PRECEDENCIA||b.PRECEDENCIA,999999)||999999;
+    const pa=num(a.ORDEM_PRECEDENCIA,999999)||999999;
+    const pb=num(b.ORDEM_PRECEDENCIA,999999)||999999;
     return pa-pb || String(a.NOME_COMPLETO||'').localeCompare(String(b.NOME_COMPLETO||''),'pt-BR');
   };
   const displayName = g=>[g.POSTO_GRAD,g.NOME_GUERRA||g.NOME_COMPLETO].filter(Boolean).join(' ').trim();
@@ -392,7 +399,8 @@ tr:hover td{background:#fbfdff}
     (guests||[]).filter(g=>g.ASSENTO).forEach(g=>{
       const p=seatCoordinates(table,g.ASSENTO,Math.max(num(table.CAPACIDADE),guests.length));
       const s=document.createElement('div'); s.className='seat'; s.style.left=p.x+'px'; s.style.top=p.y+'px';
-      s.innerHTML=`<strong>${esc(displayName(g))}</strong><span>${esc(g.CARGO||'')}</span><div class="seat-code">${esc(g.ASSENTO)}</div>`;
+      const nome=[g.POSTO_GRAD,g.NOME_GUERRA||g.NOME_COMPLETO].filter(Boolean).join(' ');
+      s.innerHTML=`<div class="seat-vertical">${esc(nome)}</div>`;
       canvas.appendChild(s);
     });
   }
@@ -412,7 +420,7 @@ tr:hover td{background:#fbfdff}
   function key(v){return U.normalize(v).toUpperCase();}
   function debounce(fn,ms){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms);};}
   async function loadPublic(){try{publicData=await A.call('publicConfig',{eventId});applyEventBrand(publicData.event);}catch(e){U.toast(e.message,'error');}}
-  function applyEventBrand(e){e=e||{};if(e.NOME){U.$('#heroTitle').textContent=e.NOME;U.$('#heroSub').textContent=e.SUBTITULO||[e.DATA,e.HORARIO,e.LOCAL].filter(Boolean).join(' • ');}if(e.BANNER_URL)U.$('#hero').style.backgroundImage=`url("${U.driveImage(e.BANNER_URL).replace(/"/g,'%22')}")`;}
+  function applyEventBrand(e){e=e||{};if(e.NOME){U.$('#heroTitle').textContent=e.NOME;U.$('#heroSub').textContent=e.SUBTITULO||[U.fmtDate(e.DATA),U.fmtTime(e.HORARIO),e.LOCAL].filter(Boolean).join(' • ');}if(e.BANNER_URL)U.$('#hero').style.backgroundImage=`url("${U.driveImage(e.BANNER_URL).replace(/"/g,'%22')}")`;}
   function showLookup(){U.$('#lookupView').classList.remove('hidden');U.$('#groupView').classList.add('hidden');U.$('#reserveView').classList.add('hidden');}
   async function searchName(){const raw=U.$('#guestName').value.trim();const box=U.$('#guestResults');if(raw.length<2){box.innerHTML='<p class="muted">Digite pelo menos 2 letras.</p>';return;}box.innerHTML='<p class="muted">Buscando...</p>';try{const r=await A.call('guestSearch',{eventId,query:raw});applyEventBrand(r.event);box.innerHTML=r.results.length?r.results.map(x=>`<button class="guest-result" data-id="${U.esc(x.ID_CONVIDADO)}"><span><strong>${U.esc([x.POSTO_GRAD,x.NOME_GUERRA||x.NOME_COMPLETO].filter(Boolean).join(' '))}</strong><span class="small muted">${U.esc(x.NOME_COMPLETO||'')}${x.TITULAR_NOME?' • Grupo de '+U.esc(x.TITULAR_NOME):''}</span></span><span>›</span></button>`).join(''):'<p class="muted">Nenhum nome encontrado.</p>';U.$$('#guestResults [data-id]').forEach(b=>b.onclick=()=>openGroup(b.dataset.id));}catch(e){box.innerHTML='';U.toast(e.message,'error');}}
   async function openGroup(id){selectedGuestId=id;try{groupData=await A.call('guestGroup',{eventId,guestId:id});applyEventBrand(groupData.event);renderGroup();}catch(e){U.toast(e.message,'error');}}

@@ -128,9 +128,8 @@ tr:hover td{background:#fbfdff}
 .table-shape.round{width:230px;height:230px;border-radius:50%}
 .table-shape.rect{width:470px;height:150px;border-radius:8px}
 .table-shape.u{width:410px;height:250px;border:20px solid #64748b;border-top:0;background:transparent;border-radius:0 0 12px 12px}
-.seat{position:absolute;transform:translate(-50%,-50%);width:130px;min-height:52px;border:1px solid #cbd5e1;background:#fff;border-radius:10px;padding:6px;text-align:center;font-size:.75rem;box-shadow:0 3px 9px rgba(15,23,42,.06)}
-.seat strong{display:block;font-size:.79rem}
-.seat .seat-code{font-size:.65rem;color:var(--muted)}
+.seat{position:absolute;transform:translate(-50%,-50%);width:48px;height:118px;border:1px solid #cbd5e1;background:#fff;border-radius:9px;padding:0;text-align:center;font-size:.74rem;box-shadow:0 3px 9px rgba(15,23,42,.06);display:flex;align-items:center;justify-content:center;overflow:visible}
+.seat .seat-vertical{width:106px;white-space:nowrap;transform:rotate(-90deg);transform-origin:center;font-weight:800;font-size:.76rem;line-height:1}
 
 /* recepção */
 .public-shell{min-height:100vh;background:var(--bg)}
@@ -273,20 +272,28 @@ tr:hover td{background:#fbfdff}
   const num = (v,d=0)=>{ const n=Number(v); return Number.isFinite(n)?n:d; };
   const fmtDate = v=>{
     if(!v) return '';
-    const d = new Date(v);
-    if(Number.isNaN(d.getTime())) return String(v);
-    return new Intl.DateTimeFormat('pt-BR',{dateStyle:'short'}).format(d);
+    const s=String(v).trim();
+    let m=s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if(m) return `${m[3]}/${m[2]}/${m[1]}`;
+    m=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    if(m) return `${String(m[1]).padStart(2,'0')}/${String(m[2]).padStart(2,'0')}/${m[3]}`;
+    const d=new Date(v);
+    if(Number.isNaN(d.getTime())) return s;
+    return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
   };
   const fmtTime = v=>{
     if(!v) return '';
-    const d = new Date(v);
-    if(Number.isNaN(d.getTime())) return String(v).slice(0,5);
-    return new Intl.DateTimeFormat('pt-BR',{hour:'2-digit',minute:'2-digit'}).format(d);
+    const s=String(v).trim();
+    const m=s.match(/(?:^|T)(\d{1,2}):(\d{2})/);
+    if(m) return `${String(m[1]).padStart(2,'0')}:${m[2]}`;
+    const d=new Date(v);
+    if(Number.isNaN(d.getTime())) return s.slice(0,5);
+    return new Intl.DateTimeFormat('pt-BR',{hour:'2-digit',minute:'2-digit',hour12:false}).format(d);
   };
   const normalize = s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
   const byPrecedence = (a,b)=>{
-    const pa=num(a.ORDEM_PRECEDENCIA||a.PRECEDENCIA,999999)||999999;
-    const pb=num(b.ORDEM_PRECEDENCIA||b.PRECEDENCIA,999999)||999999;
+    const pa=num(a.ORDEM_PRECEDENCIA,999999)||999999;
+    const pb=num(b.ORDEM_PRECEDENCIA,999999)||999999;
     return pa-pb || String(a.NOME_COMPLETO||'').localeCompare(String(b.NOME_COMPLETO||''),'pt-BR');
   };
   const displayName = g=>[g.POSTO_GRAD,g.NOME_GUERRA||g.NOME_COMPLETO].filter(Boolean).join(' ').trim();
@@ -395,7 +402,8 @@ tr:hover td{background:#fbfdff}
     (guests||[]).filter(g=>g.ASSENTO).forEach(g=>{
       const p=seatCoordinates(table,g.ASSENTO,Math.max(num(table.CAPACIDADE),guests.length));
       const s=document.createElement('div'); s.className='seat'; s.style.left=p.x+'px'; s.style.top=p.y+'px';
-      s.innerHTML=`<strong>${esc(displayName(g))}</strong><span>${esc(g.CARGO||'')}</span><div class="seat-code">${esc(g.ASSENTO)}</div>`;
+      const nome=[g.POSTO_GRAD,g.NOME_GUERRA||g.NOME_COMPLETO].filter(Boolean).join(' ');
+      s.innerHTML=`<div class="seat-vertical">${esc(nome)}</div>`;
       canvas.appendChild(s);
     });
   }
@@ -410,7 +418,7 @@ tr:hover td{background:#fbfdff}
   document.addEventListener('DOMContentLoaded',()=>{tick();setInterval(tick,1000);load();setInterval(load,SGCES_CONFIG.POLL_TV_MS||10000);});
   async function load(){try{data=await A.call('tvData',{eventId});render();}catch(e){console.error(e);}}
   function tick(){U.$('#clock').textContent=new Intl.DateTimeFormat('pt-BR',{dateStyle:'short',timeStyle:'medium'}).format(new Date());}
-  function render(){if(!data)return;const e=data.event||{},s=data.stats||{};U.$('#tvTitle').textContent=e.NOME||'SGCES';if(e.BANNER_URL){U.$('.tv-header').style.backgroundImage=`linear-gradient(rgba(16,45,82,.84),rgba(16,45,82,.84)),url("${U.driveImage(e.BANNER_URL).replace(/"/g,'%22')}")`;U.$('.tv-header').style.backgroundSize='cover';U.$('.tv-header').style.backgroundPosition='center';}U.$('#tvSub').textContent=[e.DATA,e.HORARIO,e.LOCAL].filter(Boolean).join(' • ');U.$('#tvStats').textContent=`Presentes: ${U.num(s.present)} / ${U.num(s.totalGuests)} • Vagas: ${U.num(s.freeSeats)}`;U.renderFloor(U.$('#tvFloor'),data.tables||[],{tv:true,backgroundUrl:e.CROQUI_URL});U.$('#arrivals').innerHTML=(data.latest||[]).length?(data.latest||[]).map(x=>`<div class="tv-arrival"><span><strong>${U.esc([x.POSTO_GRAD,x.NOME].filter(Boolean).join(' '))}</strong></span><span>${U.fmtTime(x.HORARIO_CHECKIN)}</span></div>`).join(''):'<p class="muted">Aguardando confirmações de presença.</p>';U.$('#tvSponsors').innerHTML=(data.sponsors||[]).map(s=>`${s.URL_SITE?`<a href="${U.esc(s.URL_SITE)}">`:'<span>'}<img src="${U.esc(U.driveImage(s.LOGO_URL))}" alt="${U.esc(s.NOME)}">${s.URL_SITE?'</a>':'</span>'}`).join('');}
+  function render(){if(!data)return;const e=data.event||{},s=data.stats||{};U.$('#tvTitle').textContent=e.NOME||'SGCES';if(e.BANNER_URL){U.$('.tv-header').style.backgroundImage=`linear-gradient(rgba(16,45,82,.84),rgba(16,45,82,.84)),url("${U.driveImage(e.BANNER_URL).replace(/"/g,'%22')}")`;U.$('.tv-header').style.backgroundSize='cover';U.$('.tv-header').style.backgroundPosition='center';}U.$('#tvSub').textContent=[U.fmtDate(e.DATA),U.fmtTime(e.HORARIO),e.LOCAL].filter(Boolean).join(' • ');U.$('#tvStats').textContent=`Presentes: ${U.num(s.present)} / ${U.num(s.totalGuests)} • Vagas: ${U.num(s.freeSeats)}`;U.renderFloor(U.$('#tvFloor'),data.tables||[],{tv:true,backgroundUrl:e.CROQUI_URL});U.$('#arrivals').innerHTML=(data.latest||[]).length?(data.latest||[]).map(x=>`<div class="tv-arrival"><span><strong>${U.esc([x.POSTO_GRAD,x.NOME].filter(Boolean).join(' '))}</strong></span><span>${U.fmtTime(x.HORARIO_CHECKIN)}</span></div>`).join(''):'<p class="muted">Aguardando confirmações de presença.</p>';U.$('#tvSponsors').innerHTML=(data.sponsors||[]).map(s=>`${s.URL_SITE?`<a href="${U.esc(s.URL_SITE)}">`:'<span>'}<img src="${U.esc(U.driveImage(s.LOGO_URL))}" alt="${U.esc(s.NOME)}">${s.URL_SITE?'</a>':'</span>'}`).join('');}
 })();
 
 </script>

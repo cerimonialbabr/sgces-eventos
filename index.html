@@ -131,9 +131,15 @@ tr:hover td{background:#fbfdff}
 .table-shape.round{width:230px;height:230px;border-radius:50%}
 .table-shape.rect{width:470px;height:150px;border-radius:8px}
 .table-shape.u{width:410px;height:250px;border:20px solid #64748b;border-top:0;background:transparent;border-radius:0 0 12px 12px}
-.seat{position:absolute;transform:translate(-50%,-50%);width:130px;min-height:52px;border:1px solid #cbd5e1;background:#fff;border-radius:10px;padding:6px;text-align:center;font-size:.75rem;box-shadow:0 3px 9px rgba(15,23,42,.06)}
-.seat strong{display:block;font-size:.79rem}
-.seat .seat-code{font-size:.65rem;color:var(--muted)}
+.seat{position:absolute;transform:translate(-50%,-50%);width:48px;height:118px;border:1px solid #cbd5e1;background:#fff;border-radius:9px;padding:0;text-align:center;font-size:.74rem;box-shadow:0 3px 9px rgba(15,23,42,.06);display:flex;align-items:center;justify-content:center;overflow:visible}
+.seat .seat-vertical{width:106px;white-space:nowrap;transform:rotate(-90deg);transform-origin:center;font-weight:800;font-size:.76rem;line-height:1}
+.photo-upload-box{display:grid;grid-template-columns:86px 1fr;gap:12px;align-items:center;border:1px dashed #cbd5e1;border-radius:12px;padding:10px}
+.photo-preview{width:86px;height:86px;border-radius:12px;background:#eef2f7;display:flex;align-items:center;justify-content:center;overflow:hidden;color:#7c899b;font-size:.72rem;font-weight:800;text-align:center}
+.photo-preview img{width:100%;height:100%;object-fit:cover}
+.nominata-editor{display:grid;grid-template-columns:minmax(260px,.8fr) minmax(0,1.7fr);gap:16px}
+.nom-item{border:1px solid var(--line);border-radius:11px;padding:11px 12px;background:#fff}
+.nom-item.message{background:#f8fafc;border-style:dashed}
+@media(max-width:900px){.nominata-editor{grid-template-columns:1fr}}
 
 /* recepção */
 .public-shell{min-height:100vh;background:var(--bg)}
@@ -222,7 +228,7 @@ tr:hover td{background:#fbfdff}
       <button data-view="conteudos">Conteúdos</button>
       <button data-view="acessos">Acessos</button>
     </nav>
-    <div class="sidebar-footer">SGCES v1.2.0</div>
+    <div class="sidebar-footer">SGCES v1.3.0</div>
   </aside>
 
   <main class="main">
@@ -261,7 +267,10 @@ tr:hover td{background:#fbfdff}
 <script>
 (function(){
   let seq = 0;
-  const pending = new Map();
+  let bridgeFrame = null;
+  let bridgeReadyPromise = null;
+  let bridgeSeq = 0;
+  const bridgePending = new Map();
 
   function readyApi(){
     const u = String(window.SGCES_CONFIG && window.SGCES_CONFIG.API_URL || '');
@@ -282,7 +291,6 @@ tr:hover td{background:#fbfdff}
         clearTimeout(timer);
         try{ delete window[id]; }catch(e){ window[id]=undefined; }
         if(script.parentNode) script.parentNode.removeChild(script);
-        pending.delete(id);
         if(err) reject(err); else resolve(data);
       }
 
@@ -299,11 +307,61 @@ tr:hover td{background:#fbfdff}
       script.src = window.SGCES_CONFIG.API_URL + (window.SGCES_CONFIG.API_URL.includes('?') ? '&' : '?') + qs.toString();
       script.onerror = ()=>finish(new Error('Não foi possível carregar a API do SGCES.'));
       document.head.appendChild(script);
-      pending.set(id, {script,timer});
     });
   }
 
-  window.SGCES_API = { call, readyApi };
+  function ensureBridge(){
+    if(bridgeReadyPromise) return bridgeReadyPromise;
+    if(!readyApi()) return Promise.reject(new Error('Configure a URL do Web App em config.js.'));
+    bridgeReadyPromise = new Promise((resolve,reject)=>{
+      const frame=document.createElement('iframe');
+      frame.style.cssText='position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;border:0;left:-20px;top:-20px';
+      frame.setAttribute('aria-hidden','true');
+      const timer=setTimeout(()=>{bridgeReadyPromise=null;try{frame.remove();}catch(e){};reject(new Error('Não foi possível iniciar o canal de upload. Verifique a nova implantação do Apps Script.'));},20000);
+      const onMessage=ev=>{
+        const m=ev.data||{};
+        if(m.type==='SGCES_BRIDGE_READY'){
+          clearTimeout(timer);
+          bridgeFrame=frame;
+          window.removeEventListener('message',onMessage);
+          resolve(frame);
+        }
+      };
+      window.addEventListener('message',onMessage);
+      const sep=window.SGCES_CONFIG.API_URL.includes('?')?'&':'?';
+      frame.src=window.SGCES_CONFIG.API_URL+sep+'bridge=1&origin='+encodeURIComponent(location.origin)+'&_='+Date.now();
+      document.body.appendChild(frame);
+    });
+    return bridgeReadyPromise;
+  }
+
+  window.addEventListener('message',ev=>{
+    const m=ev.data||{};
+    if(m.type!=='SGCES_BRIDGE_RESULT' || !m.id) return;
+    const item=bridgePending.get(m.id);
+    if(!item)return;
+    bridgePending.delete(m.id);
+    clearTimeout(item.timer);
+    if(!m.ok) return item.reject(new Error(m.error||'Falha no upload.'));
+    try{
+      const env=JSON.parse(m.raw||'{}');
+      if(!env.ok) throw new Error(env.error||'Falha no upload.');
+      item.resolve(env.data);
+    }catch(e){item.reject(e);}
+  });
+
+  async function callBridge(action,payload,timeoutMs){
+    timeoutMs=timeoutMs||90000;
+    const frame=await ensureBridge();
+    return new Promise((resolve,reject)=>{
+      const id='sgces_bridge_'+Date.now()+'_'+(++bridgeSeq);
+      const timer=setTimeout(()=>{bridgePending.delete(id);reject(new Error('Tempo esgotado durante o upload.'));},timeoutMs);
+      bridgePending.set(id,{resolve,reject,timer});
+      frame.contentWindow.postMessage({type:'SGCES_BRIDGE_CALL',id,action,payload:payload||{}},'*');
+    });
+  }
+
+  window.SGCES_API = { call, callBridge, readyApi };
 })();
 
 </script>
@@ -314,22 +372,43 @@ tr:hover td{background:#fbfdff}
   const esc = s=>String(s==null?'':s).replace(/[&<>'"]/g,c=>({ '&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;' }[c]));
   const yes = v=>['SIM','S','YES','TRUE','1'].includes(String(v||'').toUpperCase()) || v===true || v===1;
   const num = (v,d=0)=>{ const n=Number(v); return Number.isFinite(n)?n:d; };
-  const fmtDate = v=>{
+  const dateInputValue = v=>{
     if(!v) return '';
-    const d = new Date(v);
-    if(Number.isNaN(d.getTime())) return String(v);
-    return new Intl.DateTimeFormat('pt-BR',{dateStyle:'short'}).format(d);
+    const s=String(v).trim();
+    let m=s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if(m) return `${m[1]}-${m[2]}-${m[3]}`;
+    m=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    if(m) return `${m[3]}-${String(m[2]).padStart(2,'0')}-${String(m[1]).padStart(2,'0')}`;
+    const d=new Date(v);
+    if(Number.isNaN(d.getTime())) return '';
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  };
+  const fmtDate = v=>{
+    const iso=dateInputValue(v);
+    if(!iso) return String(v||'');
+    const [y,m,d]=iso.split('-');
+    return `${d}/${m}/${y}`;
+  };
+  const timeInputValue = v=>{
+    if(!v) return '';
+    const s=String(v).trim();
+    let m=s.match(/(?:^|T)(\d{1,2}):(\d{2})/);
+    if(m) return `${String(m[1]).padStart(2,'0')}:${m[2]}`;
+    m=s.match(/^(\d{1,2})[hH:](\d{2})$/);
+    return m?`${String(m[1]).padStart(2,'0')}:${m[2]}`:'';
   };
   const fmtTime = v=>{
     if(!v) return '';
+    const simple=timeInputValue(v);
+    if(simple) return simple;
     const d = new Date(v);
     if(Number.isNaN(d.getTime())) return String(v).slice(0,5);
-    return new Intl.DateTimeFormat('pt-BR',{hour:'2-digit',minute:'2-digit'}).format(d);
+    return new Intl.DateTimeFormat('pt-BR',{hour:'2-digit',minute:'2-digit',hour12:false}).format(d);
   };
   const normalize = s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
   const byPrecedence = (a,b)=>{
-    const pa=num(a.ORDEM_PRECEDENCIA||a.PRECEDENCIA,999999)||999999;
-    const pb=num(b.ORDEM_PRECEDENCIA||b.PRECEDENCIA,999999)||999999;
+    const pa=num(a.ORDEM_PRECEDENCIA,999999)||999999;
+    const pb=num(b.ORDEM_PRECEDENCIA,999999)||999999;
     return pa-pb || String(a.NOME_COMPLETO||'').localeCompare(String(b.NOME_COMPLETO||''),'pt-BR');
   };
   const displayName = g=>[g.POSTO_GRAD,g.NOME_GUERRA||g.NOME_COMPLETO].filter(Boolean).join(' ').trim();
@@ -437,12 +516,14 @@ tr:hover td{background:#fbfdff}
     (guests||[]).filter(g=>g.ASSENTO).forEach(g=>{
       const p=seatCoordinates(table,g.ASSENTO,Math.max(num(table.CAPACIDADE),guests.length));
       const s=document.createElement('div'); s.className='seat'; s.style.left=p.x+'px'; s.style.top=p.y+'px';
-      s.innerHTML=`<strong>${esc(displayName(g))}</strong><span>${esc(g.CARGO||'')}</span><div class="seat-code">${esc(g.ASSENTO)}</div>`;
+      const nome=[g.POSTO_GRAD,g.NOME_GUERRA||g.NOME_COMPLETO].filter(Boolean).join(' ');
+      s.title=[nome,g.CARGO,g.NOME_COMPLETO].filter(Boolean).join(' • ');
+      s.innerHTML=`<div class="seat-vertical">${esc(nome)}</div>`;
       canvas.appendChild(s);
     });
   }
 
-  window.SGCES_UI={$, $$, esc, yes, num, fmtDate, fmtTime, normalize, byPrecedence, displayName, tableName, driveImage, toast, setBusy, modal, badgeStatus, renderFloor, renderSeating, seatCoordinates};
+  window.SGCES_UI={$, $$, esc, yes, num, fmtDate, fmtTime, dateInputValue, timeInputValue, normalize, byPrecedence, displayName, tableName, driveImage, toast, setBusy, modal, badgeStatus, renderFloor, renderSeating, seatCoordinates};
 })();
 
 </script>
@@ -506,7 +587,7 @@ tr:hover td{background:#fbfdff}
   async function loadEvent(){
     if(!state.eventId) return;
     state.data=await A.call('eventData',{eventId:state.eventId});
-    state.data.guests=(state.data.guests||[]).sort((a,b)=>String(a.NOME_COMPLETO||'').localeCompare(String(b.NOME_COMPLETO||''),'pt-BR'));
+    state.data.guests=(state.data.guests||[]).sort(U.byPrecedence);
     renderAll();
   }
 
@@ -546,7 +627,7 @@ tr:hover td{background:#fbfdff}
     const s=state.data.stats||{}, latest=(state.data.guests||[]).filter(g=>String(g.CHECKIN).toUpperCase()==='PRESENTE'&&g.HORARIO_CHECKIN).sort((a,b)=>String(b.HORARIO_CHECKIN).localeCompare(String(a.HORARIO_CHECKIN))).slice(0,6);
     c.innerHTML=heading('Dashboard',state.data.event.NOME,`<button class="btn btn-soft" data-open-reception>Recepção</button><button class="btn btn-soft" data-open-tv>TV</button>`)+`
       <div class="stats">
-        ${stat('Convidados',s.totalGuests)}${stat('Confirmados',s.confirmed)}${stat('Presentes',s.present)}${stat('Autoridades',s.authorities)}${stat('Autoridades presentes',s.authoritiesPresent)}${stat('Vagas livres',s.freeSeats)}
+        ${stat('Convidados',s.totalGuests)}${stat('Confirmados',s.confirmed)}${stat('Presentes',s.present)}${stat('Autoridades',s.authorities)}${stat('Nominata',s.nominata)}${stat('Vagas livres',s.freeSeats)}
       </div>
       <div class="grid grid-2">
         <div class="card"><h3>Croqui geral</h3><div class="floor-wrap"><div class="floor" id="dashFloor"></div></div></div>
@@ -565,7 +646,7 @@ tr:hover td{background:#fbfdff}
       <div class="grid grid-2">
         <div class="card"><h3>${U.esc(e.NOME)}</h3><p class="muted">${U.esc(e.SUBTITULO||'')}</p>
           <div class="table-wrap"><table><tbody>
-          <tr><th>Data</th><td>${U.esc(e.DATA||'—')}</td></tr><tr><th>Horário</th><td>${U.esc(e.HORARIO||'—')}</td></tr><tr><th>Local</th><td>${U.esc(e.LOCAL||'—')}</td></tr><tr><th>Modo padrão</th><td>${U.esc(e.MODO_PADRAO||'—')}</td></tr><tr><th>Status</th><td>${U.badgeStatus(e.STATUS)}</td></tr>
+          <tr><th>Data</th><td>${U.esc(U.fmtDate(e.DATA)||'—')}</td></tr><tr><th>Horário</th><td>${U.esc(U.fmtTime(e.HORARIO)||'—')}</td></tr><tr><th>Local</th><td>${U.esc(e.LOCAL||'—')}</td></tr><tr><th>Modo padrão</th><td>${U.esc(e.MODO_PADRAO||'—')}</td></tr><tr><th>Status</th><td>${U.badgeStatus(e.STATUS)}</td></tr>
           </tbody></table></div>
           <div class="actions" style="margin-top:12px">${String(e.ID_EVENTO)===String(state.activeEventId)?'<span class="badge success">EVENTO ATIVO</span>':(String(e.STATUS).toUpperCase()==='ARQUIVADO'?'<span class="badge">ARQUIVADO</span>':'<button class="btn btn-success" data-activate>Ativar este evento</button>')}${String(e.STATUS).toUpperCase()!=='ARQUIVADO'?'<button class="btn btn-danger" data-archive>Arquivar</button>':''}</div>
         </div>
@@ -584,7 +665,7 @@ tr:hover td{background:#fbfdff}
     const m=U.modal(e.ID_EVENTO?'Editar evento':'Novo evento',`
       <div class="form-grid">
         ${field('Nome','evNome',e.NOME,'text',true)}${field('Subtítulo','evSub',e.SUBTITULO)}
-        ${field('Data','evData',e.DATA,'date')}${field('Horário','evHorario',e.HORARIO,'text')}
+        ${field('Data','evData',U.dateInputValue(e.DATA),'date')}${field('Horário','evHorario',U.timeInputValue(e.HORARIO),'time')}
         ${field('Local','evLocal',e.LOCAL)}${selectField('Modo padrão','evModo',['FIXO','RESERVA','LIVRE','HÍBRIDO'],e.MODO_PADRAO||'HÍBRIDO')}
         <div class="field"><label>Status</label><div style="padding:10px 0">${U.badgeStatus(e.STATUS||'RASCUNHO')}</div><div class="small muted">O evento ativo é definido pelo botão “Ativar este evento”. Trocar o evento em edição não altera o evento operacional.</div></div>
         <div class="field" style="grid-column:1/-1"><label>URL do banner</label><input id="evBanner" value="${U.esc(e.BANNER_URL||'')}"></div>
@@ -616,56 +697,122 @@ tr:hover td{background:#fbfdff}
 
   function renderGuestRows(q){
     const root=U.$('#guestTable'); if(!root)return;
-    const n=U.normalize(q); let rows=(state.data.guests||[]).filter(g=>!n||U.normalize([g.NOME_COMPLETO,g.NOME_GUERRA,g.POSTO_GRAD,g.CARGO,g.OM_ORGAO,tableFor(g.MESA_ID)?.NOME].join(' ')).includes(n));
-    root.innerHTML=rows.length?`<div class="table-wrap"><table><thead><tr><th>Convidado</th><th>Cargo / OM</th><th>Mesa</th><th>RSVP</th><th>Chegada</th><th></th></tr></thead><tbody>${rows.map(g=>`<tr>
-      <td><strong>${U.esc(U.displayName(g))}</strong>${U.yes(g.AUTORIDADE_INTERESSE)?'<div><span class="badge info">AUTORIDADE DE INTERESSE</span></div>':''}</td>
-      <td>${U.esc(g.CARGO||'')}<div class="small muted">${U.esc(g.OM_ORGAO||'')}</div></td><td>${U.esc(tableFor(g.MESA_ID)?.NOME||'—')}${g.ASSENTO?`<div class="small muted">${U.esc(g.ASSENTO)}</div>`:''}</td><td>${U.badgeStatus(g.RSVP)}</td><td>${U.badgeStatus(g.CHECKIN)}</td>
-      <td class="nowrap"><button class="btn btn-sm" data-edit-g="${U.esc(g.ID_CONVIDADO)}">Editar</button> <button class="btn btn-sm btn-danger" data-del-g="${U.esc(g.ID_CONVIDADO)}">Excluir</button></td></tr>`).join('')}</tbody></table></div>`:'<p class="muted">Nenhum convidado encontrado.</p>';
+    const n=U.normalize(q);
+    let rows=(state.data.guests||[])
+      .filter(g=>!n||U.normalize([g.NOME_COMPLETO,g.NOME_GUERRA,g.POSTO_GRAD,g.CARGO,g.OM_ORGAO,tableFor(g.MESA_ID)?.NOME].join(' ')).includes(n))
+      .slice().sort(U.byPrecedence);
+    root.innerHTML=rows.length?`<div class="table-wrap"><table><thead><tr><th>Ord.</th><th>Convidado</th><th>Cargo / OM</th><th>Mesa</th><th>RSVP</th><th>Chegada</th><th></th></tr></thead><tbody>${rows.map(g=>`<tr>
+      <td><strong>${U.esc(g.ORDEM_PRECEDENCIA||'—')}</strong></td>
+      <td><strong>${U.esc(U.displayName(g))}</strong>${U.yes(g.NOMINATA)?'<div><span class="badge info">NOMINATA</span></div>':''}<div class="small muted">${U.esc(g.NIVEL||'CONVIDADO')}</div></td>
+      <td>${U.esc(g.CARGO||'')}<div class="small muted">${U.esc(g.OM_ORGAO||'')}</div></td>
+      <td>${U.esc(tableFor(g.MESA_ID)?.NOME||'—')}${g.ASSENTO?`<div class="small muted">${U.esc(g.ASSENTO)}</div>`:''}</td>
+      <td>${U.badgeStatus(g.RSVP)}</td><td>${U.badgeStatus(g.CHECKIN)}</td>
+      <td class="nowrap"><button class="btn btn-sm" data-reorder-g="${U.esc(g.ID_CONVIDADO)}">Reordenar</button> <button class="btn btn-sm" data-edit-g="${U.esc(g.ID_CONVIDADO)}">Editar</button> <button class="btn btn-sm btn-danger" data-del-g="${U.esc(g.ID_CONVIDADO)}">Excluir</button></td></tr>`).join('')}</tbody></table></div>`:'<p class="muted">Nenhum convidado encontrado.</p>';
+    root.querySelectorAll('[data-reorder-g]').forEach(b=>b.onclick=()=>reorderGuestModal(guestById(b.dataset.reorderG)));
     root.querySelectorAll('[data-edit-g]').forEach(b=>b.onclick=()=>guestModal(guestById(b.dataset.editG)));
-    root.querySelectorAll('[data-del-g]').forEach(b=>b.onclick=()=>{const g=guestById(b.dataset.delG);if(confirm(`Excluir ${g.NOME_COMPLETO}?`))runBusy(async()=>{await A.call('deleteGuest',{guestId:g.ID_CONVIDADO});await loadEvent();U.toast('Convidado excluído.','success');});});
+    root.querySelectorAll('[data-del-g]').forEach(b=>b.onclick=()=>{const g=guestById(b.dataset.delG);if(confirm(`Excluir ${g.NOME_COMPLETO}?`))runBusy(async()=>{await A.call('deleteGuest',{guestId:g.ID_CONVIDADO});await loadEvent();renderConvidados();U.toast('Convidado excluído.','success');});});
+  }
+
+  function guestPositionOptions(g){
+    return (state.data.guests||[]).slice().sort(U.byPrecedence)
+      .filter(x=>String(x.ID_CONVIDADO)!==String(g&&g.ID_CONVIDADO))
+      .map(x=>`<option value="${U.esc(x.ID_CONVIDADO)}">${U.esc((x.ORDEM_PRECEDENCIA?x.ORDEM_PRECEDENCIA+' • ':'')+U.displayName(x))}</option>`).join('');
+  }
+
+  function reorderGuestModal(g){
+    if(!g)return;
+    const opts=guestPositionOptions(g);
+    if(!opts){U.toast('Não há outra pessoa para usar como referência.','error');return;}
+    const m=U.modal('Reordenar convidado',`
+      <p><strong>${U.esc(U.displayName(g))}</strong></p>
+      <p class="muted">A ordem é própria deste evento. Ao mover um titular, os acompanhantes diretamente vinculados a ele acompanham o bloco.</p>
+      <div class="form-grid">
+        ${selectField('Posição','rSide',['ANTES','DEPOIS'],'DEPOIS')}
+        <div class="field"><label>Antes ou depois de quem?</label><select id="rAnchor">${opts}</select></div>
+      </div>`,
+      `<button class="btn" data-close>Cancelar</button><button class="btn btn-primary" data-save>Reordenar</button>`);
+    m.querySelector('[data-save]').onclick=async ev=>{
+      const btn=ev.currentTarget;U.setBusy(btn,true);
+      try{
+        await A.call('reorderGuest',{guestId:g.ID_CONVIDADO,anchorGuestId:U.$('#rAnchor',m).value,side:U.$('#rSide',m).value});
+        m.remove();await loadEvent();renderConvidados();U.toast('Ordem de precedência atualizada.','success');
+      }catch(err){U.toast(err.message,'error');}finally{U.setBusy(btn,false);}
+    };
   }
 
   function guestModal(g){
     g=g||{};
     const tableOptions=['<option value="">Sem mesa</option>'].concat((state.data.tables||[]).map(t=>`<option value="${U.esc(t.ID_MESA)}" ${String(t.ID_MESA)===String(g.MESA_ID)?'selected':''}>${U.esc(t.NOME)} (${U.num(t.OCUPACAO)}/${U.num(t.CAPACIDADE)})</option>`)).join('');
-    const titularOptions=['<option value="">Sem vínculo / titular</option>'].concat((state.data.guests||[]).filter(x=>String(x.ID_CONVIDADO)!==String(g.ID_CONVIDADO)).map(x=>`<option value="${U.esc(x.ID_CONVIDADO)}" ${String(x.ID_CONVIDADO)===String(g.ID_TITULAR)?'selected':''}>${U.esc([x.POSTO_GRAD,x.NOME_COMPLETO].filter(Boolean).join(' '))}</option>`)).join('');
+    const titularOptions=['<option value="">Sem vínculo / titular</option>'].concat((state.data.guests||[]).slice().sort(U.byPrecedence).filter(x=>String(x.ID_CONVIDADO)!==String(g.ID_CONVIDADO)).map(x=>`<option value="${U.esc(x.ID_CONVIDADO)}" ${String(x.ID_CONVIDADO)===String(g.ID_TITULAR)?'selected':''}>${U.esc([x.POSTO_GRAD,x.NOME_COMPLETO].filter(Boolean).join(' '))}</option>`)).join('');
+    const posOptions='<option value="FINAL">Manter posição / final da lista</option><option value="ANTES">Inserir antes de...</option><option value="DEPOIS">Inserir depois de...</option>';
+    const anchorOptions='<option value="">Selecione a pessoa de referência</option>'+guestPositionOptions(g);
+    const photoSrc=U.driveImage(g.FOTO_URL||'');
     const m=U.modal(g.ID_CONVIDADO?'Editar convidado':'Adicionar convidado',`
       <div class="form-grid-3">
         ${field('Posto / Graduação','gPosto',g.POSTO_GRAD)}
         <div class="field" style="grid-column:span 2"><label>Nome completo</label><input id="gNome" value="${U.esc(g.NOME_COMPLETO||'')}"></div>
         ${field('Nome de guerra','gGuerra',g.NOME_GUERRA)}${field('Cargo','gCargo',g.CARGO)}${field('OM / Órgão','gOm',g.OM_ORGAO)}
-        ${selectField('Sexo','gSexo',['','MASCULINO','FEMININO'],g.SEXO||'')}${field('Vocativo','gVoc',g.VOCATIVO)}${field('Precedência','gPrec',g.PRECEDENCIA,'number')}
-        ${field('E-mail','gEmail',g.EMAIL,'email')}${field('Telefone','gTel',g.TELEFONE)}${selectField('Tipo','gTipo',['TITULAR','ACOMPANHANTE','CONVIDADO'],g.TIPO||'TITULAR')}
-        ${selectField('Autoridade de interesse','gAut',['NAO','SIM'],g.AUTORIDADE_INTERESSE||'NAO')}${selectField('Nível operacional','gNivel',['CONVIDADO','AUTORIDADE','ESPECIAL'],g.NIVEL_INTERESSE||'CONVIDADO')}${selectField('RSVP','gRsvp',['NÃO COMPARECERÁ','CONFIRMADO','PENDENTE'],g.RSVP||'PENDENTE')}
-        <div class="field"><label>Mesa</label><select id="gMesa">${tableOptions}</select></div>${field('Assento / posição','gSeat',g.ASSENTO)}
+        ${selectField('Sexo','gSexo',['','MASCULINO','FEMININO'],g.SEXO||'')}${field('Vocativo','gVoc',g.VOCATIVO)}${field('E-mail','gEmail',g.EMAIL,'email')}
+        ${field('Telefone','gTel',g.TELEFONE)}${selectField('Tipo','gTipo',['TITULAR','ACOMPANHANTE','CONVIDADO'],g.TIPO||'TITULAR')}${selectField('Nominata','gNom',['NAO','SIM'],g.NOMINATA||'NAO')}
+        ${selectField('Nível','gNivel',['CONVIDADO','AUTORIDADE'],g.NIVEL||'CONVIDADO')}${selectField('RSVP','gRsvp',['NÃO COMPARECERÁ','CONFIRMADO','PENDENTE'],g.RSVP||'PENDENTE')}
+        <div class="field"><label>Mesa</label><select id="gMesa">${tableOptions}</select></div>
+        ${field('Assento / posição','gSeat',g.ASSENTO)}
         <div class="field"><label>Grupo / titular</label><select id="gTit">${titularOptions}</select></div>
-        <div class="field" style="grid-column:span 2"><label>URL da foto</label><input id="gFoto" value="${U.esc(g.FOTO_URL||'')}"></div>
+        <div class="field"><label>Posição no evento</label><select id="gPlace">${posOptions}</select></div>
+        <div class="field" style="grid-column:span 2"><label>Pessoa de referência</label><select id="gAnchor" disabled>${anchorOptions}</select><div class="small muted">Use apenas se quiser inserir/reordenar esta pessoa antes ou depois de alguém.</div></div>
+        <div class="field" style="grid-column:1/-1"><label>Foto para identificação</label>
+          <div class="photo-upload-box">
+            <div class="photo-preview" id="gPhotoPreview">${photoSrc?`<img src="${U.esc(photoSrc)}" alt="Foto">`:'SEM FOTO'}</div>
+            <div><input id="gPhotoFile" type="file" accept="image/*"><div class="small muted" style="margin-top:6px">A foto será enviada para a pasta SGCES - Arquivos/FOTOS e o endereço será gravado automaticamente no cadastro da pessoa.</div></div>
+          </div>
+        </div>
         ${!g.ID_CONVIDADO?'<div class="field" style="grid-column:span 2"><label>Acompanhante (opcional)</label><input id="gAcomp" placeholder="Nome completo do acompanhante"></div><div class="field"><label>Sexo acompanhante</label><select id="gAcompSexo"><option></option><option>MASCULINO</option><option>FEMININO</option></select></div>':''}
         <div class="field" style="grid-column:1/-1"><label>Observação da recepção</label><textarea id="gObs">${U.esc(g.OBS_RECEPCAO||'')}</textarea></div>
       </div>`, `<button class="btn" data-close>Cancelar</button><button class="btn btn-primary" data-save>Salvar</button>`);
+
+    const place=U.$('#gPlace',m),anchor=U.$('#gAnchor',m);
+    place.onchange=()=>{anchor.disabled=!['ANTES','DEPOIS'].includes(place.value); if(anchor.disabled)anchor.value='';};
+    const photoInput=U.$('#gPhotoFile',m);
+    photoInput.onchange=()=>{
+      const f=photoInput.files[0]; if(!f)return;
+      const url=URL.createObjectURL(f); U.$('#gPhotoPreview',m).innerHTML=`<img src="${U.esc(url)}" alt="Prévia">`;
+    };
+
     m.querySelector('[data-save]').onclick=async ev=>{
       const btn=ev.currentTarget;U.setBusy(btn,true);
       try{
-        const p={ID_CONVIDADO:g.ID_CONVIDADO||'',ID_PESSOA:g.ID_PESSOA||'',eventId:state.eventId,postoGrad:U.$('#gPosto',m).value.trim(),nomeCompleto:U.$('#gNome',m).value.trim(),nomeGuerra:U.$('#gGuerra',m).value.trim(),cargo:U.$('#gCargo',m).value.trim(),omOrgao:U.$('#gOm',m).value.trim(),sexo:U.$('#gSexo',m).value,vocativo:U.$('#gVoc',m).value.trim(),precedencia:U.$('#gPrec',m).value,email:U.$('#gEmail',m).value.trim(),telefone:U.$('#gTel',m).value.trim(),tipo:U.$('#gTipo',m).value,autoridadeInteresse:U.$('#gAut',m).value,nivelInteresse:U.$('#gNivel',m).value,rsvp:U.$('#gRsvp',m).value,mesaId:U.$('#gMesa',m).value,assento:U.$('#gSeat',m).value.trim(),fotoUrl:U.$('#gFoto',m).value.trim(),idTitular:U.$('#gTit',m).value,obsRecepcao:U.$('#gObs',m).value.trim()};
+        const p={ID_CONVIDADO:g.ID_CONVIDADO||'',ID_PESSOA:g.ID_PESSOA||'',eventId:state.eventId,
+          postoGrad:U.$('#gPosto',m).value.trim(),nomeCompleto:U.$('#gNome',m).value.trim(),nomeGuerra:U.$('#gGuerra',m).value.trim(),
+          cargo:U.$('#gCargo',m).value.trim(),omOrgao:U.$('#gOm',m).value.trim(),sexo:U.$('#gSexo',m).value,vocativo:U.$('#gVoc',m).value.trim(),
+          email:U.$('#gEmail',m).value.trim(),telefone:U.$('#gTel',m).value.trim(),tipo:U.$('#gTipo',m).value,
+          nominata:U.$('#gNom',m).value,nivel:U.$('#gNivel',m).value,rsvp:U.$('#gRsvp',m).value,mesaId:U.$('#gMesa',m).value,
+          assento:U.$('#gSeat',m).value.trim(),idTitular:U.$('#gTit',m).value,obsRecepcao:U.$('#gObs',m).value.trim(),
+          placementSide:place.value,placementAnchorId:anchor.value};
         if(!g.ID_CONVIDADO){p.acompanhanteNome=U.$('#gAcomp',m).value.trim();p.acompanhanteSexo=U.$('#gAcompSexo',m).value;}
         if(!p.nomeCompleto)throw new Error('Informe o nome completo.');
-        await A.call('saveGuest',p);m.remove();await loadEvent();U.toast('Convidado salvo.','success');
+        if(['ANTES','DEPOIS'].includes(place.value) && !anchor.value)throw new Error('Escolha a pessoa de referência.');
+        const saved=await A.call('saveGuest',p);
+        const file=photoInput.files[0];
+        if(file){
+          const dataUrl=await optimizeImageFile(file);
+          await A.callBridge('uploadGuestPhoto',{guestId:saved.ID_CONVIDADO,fileName:file.name,dataUrl:dataUrl},90000);
+        }
+        m.remove();await loadEvent();renderConvidados();U.toast(file?'Convidado e foto salvos.':'Convidado salvo.','success');
       }catch(err){U.toast(err.message,'error');}finally{U.setBusy(btn,false);}
     };
   }
 
   function importModal(){
-    const m=U.modal('Importar convidados',`<p class="muted">Cole as linhas da planilha modelo. Somente <strong>NOME_COMPLETO</strong> é obrigatório; os demais campos podem ser completados depois no SGCES.</p><p class="small muted">Colunas aceitas: POSTO_GRAD, NOME_COMPLETO, NOME_GUERRA, TIPO, TITULAR_GRUPO, CARGO, OM_ORGAO, SEXO, RSVP, MESA, AUTORIDADE_INTERESSE, NIVEL_INTERESSE, PRECEDENCIA, EMAIL, TELEFONE, FOTO_URL e OBS_RECEPCAO.</p><div class="field"><label>Dados copiados do Excel / Sheets</label><textarea id="impText" style="min-height:300px" placeholder="POSTO_GRAD\tNOME_COMPLETO\tNOME_GUERRA\t...\nCel Av\tJoão da Silva\tSilva\t..."></textarea></div><div id="impStatus" class="small muted" style="margin-top:8px"></div>`, `<button class="btn" data-close>Cancelar</button><button class="btn btn-primary" data-import-now>Importar</button>`);
+    const m=U.modal('Importar convidados',`<p class="muted">Cole as linhas da planilha modelo. Somente <strong>NOME_COMPLETO</strong> é obrigatório; o que estiver vazio pode ser completado depois no SGCES. A ordem das linhas importadas passa a ser a ordem inicial de precedência deste evento.</p><p class="small muted">Colunas aceitas: POSTO_GRAD, NOME_COMPLETO, NOME_GUERRA, TIPO, TITULAR_GRUPO, CARGO, OM_ORGAO, SEXO, RSVP, MESA, NOMINATA, NIVEL, EMAIL, TELEFONE, FOTO_URL (legado/opcional) e OBS_RECEPCAO.</p><div class="field"><label>Dados copiados do Excel / Sheets</label><textarea id="impText" style="min-height:300px" placeholder="POSTO_GRAD\tNOME_COMPLETO\tNOME_GUERRA\t...\nCel Av\tJoão da Silva\tSilva\t..."></textarea></div><div id="impStatus" class="small muted" style="margin-top:8px"></div>`, `<button class="btn" data-close>Cancelar</button><button class="btn btn-primary" data-import-now>Importar</button>`);
     m.querySelector('[data-import-now]').onclick=async ev=>{
       const btn=ev.currentTarget;U.setBusy(btn,true,'Importando');
       try{
         const rows=parseImport(U.$('#impText',m).value); if(!rows.length)throw new Error('Nenhuma linha válida.');
-        rows.sort((a,b)=>(a.titularNome?1:0)-(b.titularNome?1:0));
         let total=0; for(let i=0;i<rows.length;i+=8){
           U.$('#impStatus',m).textContent=`Importando ${Math.min(i+8,rows.length)} de ${rows.length}...`;
           const r=await A.call('importGuests',{eventId:state.eventId,rows:rows.slice(i,i+8)},45000); total+=U.num(r.imported);
         }
-        m.remove();await loadEvent();U.toast(`${total} convidado(s) importado(s).`,'success');
+        m.remove();await loadEvent();renderConvidados();U.toast(`${total} convidado(s) importado(s).`,'success');
       }catch(err){U.toast(err.message,'error');}finally{U.setBusy(btn,false);}
     };
   }
@@ -675,10 +822,16 @@ tr:hover td{background:#fbfdff}
     const delim=lines[0].includes('\t')?'\t':lines[0].includes(';')?';':',';
     const h=lines[0].split(delim).map(x=>U.normalize(x).replace(/[^a-z0-9]/g,''));
     const pick=(obj,names)=>{for(const n of names){const idx=h.indexOf(n);if(idx>=0)return obj[idx]||'';}return'';};
-    return lines.slice(1).map(line=>line.split(delim)).filter(r=>r.some(Boolean)).map(r=>{
-      const mesaTxt=pick(r,['mesa','numeromesa']); const mesa=(state.data.tables||[]).find(t=>String(t.NUMERO)===String(mesaTxt)||U.normalize(t.NOME)===U.normalize(mesaTxt));
+    return lines.slice(1).map((line,idx)=>({r:line.split(delim),idx})).filter(x=>x.r.some(Boolean)).map(x=>{
+      const r=x.r, mesaTxt=pick(r,['mesa','numeromesa']); const mesa=(state.data.tables||[]).find(t=>String(t.NUMERO)===String(mesaTxt)||U.normalize(t.NOME)===U.normalize(mesaTxt));
       const tipo=(pick(r,['tipo'])||'TITULAR').toUpperCase();
-      return {postoGrad:pick(r,['postograd','posto','postograduacao']),nomeCompleto:pick(r,['nomecompleto','nome']),nomeGuerra:pick(r,['nomeguerra']),tipo:tipo,titularNome:pick(r,['titulargrupo','titular','grupotitular']),cargo:pick(r,['cargo','funcao']),omOrgao:pick(r,['omorgao','om','orgao']),sexo:pick(r,['sexo']),rsvp:pick(r,['rsvp','status'])||'PENDENTE',mesaId:mesa?mesa.ID_MESA:'',autoridadeInteresse:/^(sim|s|1|true)$/i.test(pick(r,['autoridadeinteresse','autoridade']))?'SIM':'NAO',nivelInteresse:pick(r,['nivelinteresse','nivel'])||'CONVIDADO',precedencia:pick(r,['precedencia','ordemprecedencia']),email:pick(r,['email']),telefone:pick(r,['telefone','celular']),fotoUrl:pick(r,['fotourl','foto']),obsRecepcao:pick(r,['obsrecepcao','observacao','obs']),acompanhanteNome:pick(r,['acompanhante','nomeacompanhante'])};
+      const nivel=String(pick(r,['nivel','nivelinteresse'])||'CONVIDADO').toUpperCase()==='AUTORIDADE'?'AUTORIDADE':'CONVIDADO';
+      return {__idx:x.idx,postoGrad:pick(r,['postograd','posto','postograduacao']),nomeCompleto:pick(r,['nomecompleto','nome']),nomeGuerra:pick(r,['nomeguerra']),
+        tipo,titularNome:pick(r,['titulargrupo','titular','grupotitular']),cargo:pick(r,['cargo','funcao']),omOrgao:pick(r,['omorgao','om','orgao']),
+        sexo:pick(r,['sexo']),rsvp:pick(r,['rsvp','status'])||'PENDENTE',mesaId:mesa?mesa.ID_MESA:'',
+        nominata:/^(sim|s|1|true)$/i.test(pick(r,['nominata','autoridadeinteresse']))?'SIM':'NAO',nivel,
+        email:pick(r,['email']),telefone:pick(r,['telefone','celular']),fotoUrl:pick(r,['fotourl','foto']),
+        obsRecepcao:pick(r,['obsrecepcao','observacao','obs']),acompanhanteNome:pick(r,['acompanhante','nomeacompanhante'])};
     }).filter(x=>x.nomeCompleto);
   }
 
@@ -757,24 +910,9 @@ tr:hover td{background:#fbfdff}
   async function uploadCroquiImage(file,eventId,oldUrl){
     if(!A.readyApi())throw new Error('Configure a URL do Web App em config.js.');
     const dataUrl=await optimizeImageFile(file);
-    const apiUrl=window.SGCES_CONFIG.API_URL;
-    return new Promise((resolve,reject)=>{
-      const frame=document.createElement('iframe'),form=document.createElement('form');
-      const frameName='sgces_upload_'+Date.now()+'_'+Math.random().toString(36).slice(2);
-      frame.name=frameName;frame.style.display='none';document.body.appendChild(frame);
-      form.method='POST';form.action=apiUrl;form.target=frameName;form.style.display='none';
-      const add=(name,value)=>{const input=document.createElement('input');input.type='hidden';input.name=name;input.value=value;form.appendChild(input);};
-      add('action','uploadEventImage');add('payload',JSON.stringify({eventId:eventId,fileName:file.name,dataUrl:dataUrl}));document.body.appendChild(form);
-      let submitted=false,done=false;
-      const cleanup=()=>{try{form.remove();frame.remove();}catch(e){}};
-      const timer=setTimeout(()=>{if(done)return;done=true;cleanup();reject(new Error('Tempo esgotado ao enviar a imagem.'));},60000);
-      frame.onload=async()=>{
-        if(!submitted||done)return;
-        try{await new Promise(r=>setTimeout(r,500));const r=await A.call('eventData',{eventId:eventId});const newUrl=r&&r.event&&r.event.CROQUI_URL;if(!newUrl||String(newUrl)===String(oldUrl||''))throw new Error('A imagem não foi gravada. Verifique a autorização do Google Drive e tente novamente.');done=true;clearTimeout(timer);cleanup();resolve(newUrl);}
-        catch(err){done=true;clearTimeout(timer);cleanup();reject(err);}
-      };
-      submitted=true;form.submit();
-    });
+    const r=await A.callBridge('uploadEventImage',{eventId:eventId,fileName:file.name,dataUrl:dataUrl},90000);
+    if(!r || !r.url)throw new Error('A imagem não foi gravada. Execute “SGCES > Autorizar fotos e croquis” na planilha e atualize a implantação do Web App.');
+    return r.url;
   }
 
   function enableFloorEditing(floor){
@@ -818,10 +956,123 @@ tr:hover td{background:#fbfdff}
 
   function renderNominata(){
     const c=U.$('[data-section="nominata"]');if(requireEvent(c,'Nominata'))return;
-    const list=(state.data.guests||[]).filter(g=>U.yes(g.AUTORIDADE_INTERESSE)).sort(U.byPrecedence);
-    c.innerHTML=heading('Nominata','Autoridades de interesse e controle de chegada.',`<button class="btn" data-print>Imprimir</button>`)+`<div class="card">${list.length?`<div class="table-wrap"><table><thead><tr><th>Ord.</th><th>Autoridade</th><th>Cargo</th><th>Mesa</th><th>RSVP</th><th>Chegada</th><th></th></tr></thead><tbody>${list.map((g,i)=>`<tr><td>${U.esc(g.ORDEM_PRECEDENCIA||g.PRECEDENCIA||i+1)}</td><td><strong>${U.esc(U.displayName(g))}</strong></td><td>${U.esc(g.CARGO||'')}</td><td>${U.esc(tableFor(g.MESA_ID)?.NOME||'—')}</td><td>${U.badgeStatus(g.RSVP)}</td><td>${U.badgeStatus(g.CHECKIN)}${g.HORARIO_CHECKIN?`<div class="small muted">${U.fmtTime(g.HORARIO_CHECKIN)}</div>`:''}</td><td><button class="btn btn-sm ${String(g.CHECKIN).toUpperCase()==='PRESENTE'?'':'btn-success'}" data-check="${U.esc(g.ID_CONVIDADO)}">${String(g.CHECKIN).toUpperCase()==='PRESENTE'?'Desfazer':'Confirmar chegada'}</button></td></tr>`).join('')}</tbody></table></div>`:'<p class="muted">Nenhuma autoridade marcada como “Autoridade de interesse”.</p>'}</div>`;
-    c.querySelectorAll('[data-check]').forEach(b=>b.onclick=()=>{const g=guestById(b.dataset.check);runBusy(async()=>{await A.call('checkIn',{guestId:g.ID_CONVIDADO,present:String(g.CHECKIN).toUpperCase()!=='PRESENTE'});await loadEvent();renderNominata();});});
-    c.querySelector('[data-print]').onclick=()=>window.print();
+    c.innerHTML=heading('Nominata','Selecione as autoridades que devem integrar a Nominata. A ordem acompanha automaticamente a precedência do evento; mensagens podem ser posicionadas antes ou depois de qualquer autoridade selecionada.')+
+      `<div class="card"><div style="display:flex;align-items:center;gap:10px"><span class="spinner"></span><span class="muted">Carregando Nominata...</span></div></div>`;
+    loadNominataView(c);
+  }
+
+  async function loadNominataView(c){
+    try{
+      const data=await A.call('nominataData',{eventId:state.eventId});
+      if(state.view!=='nominata' || !document.body.contains(c))return;
+      drawNominataView(c,data);
+    }catch(err){c.innerHTML=heading('Nominata','Não foi possível carregar.')+`<div class="card"><p class="danger-text">${U.esc(err.message||String(err))}</p></div>`;}
+  }
+
+  function drawNominataView(c,data){
+    const items=data.items||[], selected=data.selected||[];
+    c.innerHTML=heading('Nominata','Selecione quem entra na Nominata. Autoridades seguem a precedência do evento; mensagens ficam ancoradas antes ou depois da autoridade escolhida.',
+      `<button class="btn" data-add-nom>Adicionar à Nominata</button><button class="btn" data-add-msg>Adicionar mensagem</button><button class="btn btn-primary" data-print>Imprimir Nominata</button>`)+`
+      <div class="nominata-editor">
+        <div class="card">
+          <h3>Selecionados</h3>
+          <p class="small muted">${selected.length} pessoa(s) selecionada(s).</p>
+          ${selected.length?`<div class="nominata-list">${selected.map(g=>`<div class="nominata-item"><div><strong>${U.esc((g.ORDEM_PRECEDENCIA?g.ORDEM_PRECEDENCIA+' • ':'')+U.displayName(g))}</strong><div class="small muted">${U.esc(g.CARGO||'')}${g.MESA_ID?' • '+U.esc(tableFor(g.MESA_ID)?.NOME||''):''}</div></div><div>${U.badgeStatus(g.CHECKIN)}</div><button class="btn btn-sm btn-danger" data-remove-nom="${U.esc(g.ID_CONVIDADO)}">Remover</button></div>`).join('')}</div>`:'<p class="muted">Nenhuma pessoa selecionada.</p>'}
+        </div>
+        <div class="card">
+          <div class="section-actions"><div><h3 style="margin:0">Ordem de leitura</h3><div class="small muted">A ordem das autoridades é automática. Somente as mensagens podem ser ancoradas entre elas.</div></div></div>
+          ${items.length?`<div style="display:grid;gap:8px;margin-top:12px">${items.map((it,i)=>{
+            if(it.TIPO_ITEM==='MENSAGEM'){
+              const ref=selected.find(g=>String(g.ID_CONVIDADO)===String(it.ANCHOR_REF));
+              return `<div class="nom-item message"><div class="section-actions"><div><strong>MENSAGEM</strong><div style="margin-top:5px">${U.esc(it.TEXTO||'')}</div><div class="small muted" style="margin-top:5px">${ref?U.esc((it.ANCHOR_SIDE==='ANTES'?'Antes de ':'Depois de ')+U.displayName(ref)):'Ao final da Nominata'}</div></div><div class="actions"><button class="btn btn-sm" data-edit-msg="${U.esc(it.ID_ITEM)}">Editar</button><button class="btn btn-sm btn-danger" data-del-msg="${U.esc(it.ID_ITEM)}">Excluir</button></div></div></div>`;
+            }
+            const g=it.GUEST||{};
+            return `<div class="nom-item"><div class="section-actions"><div><strong>${U.esc(U.displayName(g))}</strong><div class="small muted">${U.esc(g.CARGO||'')}${g.MESA_ID?' • '+U.esc(tableFor(g.MESA_ID)?.NOME||''):''}</div></div><div class="actions">${U.badgeStatus(g.RSVP)} ${U.badgeStatus(g.CHECKIN)} <button class="btn btn-sm ${String(g.CHECKIN).toUpperCase()==='PRESENTE'?'':'btn-success'}" data-check-nom="${U.esc(g.ID_CONVIDADO)}">${String(g.CHECKIN).toUpperCase()==='PRESENTE'?'Desfazer chegada':'Confirmar chegada'}</button></div></div></div>`;
+          }).join('')}</div>`:'<p class="muted">A Nominata está vazia.</p>'}
+        </div>
+      </div>`;
+
+    c.querySelector('[data-add-nom]').onclick=()=>nominataSelectModal(data,c);
+    c.querySelector('[data-add-msg]').onclick=()=>nominataMessageModal(data,null,c);
+    c.querySelector('[data-print]').onclick=()=>printNominata(data);
+    c.querySelectorAll('[data-remove-nom]').forEach(b=>b.onclick=()=>runBusy(async()=>{await A.call('setNominataGuest',{eventId:state.eventId,guestId:b.dataset.removeNom,selected:false});await loadEvent();await loadNominataView(c);}));
+    c.querySelectorAll('[data-check-nom]').forEach(b=>b.onclick=()=>{const g=guestById(b.dataset.checkNom);runBusy(async()=>{await A.call('checkIn',{guestId:g.ID_CONVIDADO,present:String(g.CHECKIN).toUpperCase()!=='PRESENTE'});await loadEvent();await loadNominataView(c);});});
+    c.querySelectorAll('[data-edit-msg]').forEach(b=>b.onclick=()=>nominataMessageModal(data,(data.messages||[]).find(x=>String(x.ID_ITEM)===String(b.dataset.editMsg)),c));
+    c.querySelectorAll('[data-del-msg]').forEach(b=>b.onclick=()=>{if(confirm('Excluir esta mensagem?'))runBusy(async()=>{await A.call('deleteNominataMessage',{id:b.dataset.delMsg});await loadNominataView(c);});});
+  }
+
+  function nominataSelectModal(data,c){
+    const cand=(data.candidates||[]).slice().sort(U.byPrecedence);
+    const m=U.modal('Adicionar à Nominata',`
+      <div class="field"><label>Buscar</label><input id="nomSearch" class="search-input" placeholder="Nome, posto, cargo ou OM"></div>
+      <div id="nomCandidates" style="max-height:420px;overflow:auto;margin-top:12px"></div>`,
+      `<button class="btn" data-close>Cancelar</button><button class="btn btn-primary" data-save>Adicionar selecionados</button>`);
+    const draw=()=>{
+      const q=U.normalize(U.$('#nomSearch',m).value);
+      const rows=cand.filter(g=>!q||U.normalize([g.POSTO_GRAD,g.NOME_COMPLETO,g.NOME_GUERRA,g.CARGO,g.OM_ORGAO].join(' ')).includes(q));
+      U.$('#nomCandidates',m).innerHTML=rows.length?rows.map(g=>`<label class="nominata-item" style="grid-template-columns:auto 1fr;margin-bottom:7px;cursor:pointer"><input type="checkbox" data-nom-id="${U.esc(g.ID_CONVIDADO)}"><div><strong>${U.esc((g.ORDEM_PRECEDENCIA?g.ORDEM_PRECEDENCIA+' • ':'')+U.displayName(g))}</strong><div class="small muted">${U.esc(g.CARGO||'')}</div></div></label>`).join(''):'<p class="muted">Nenhum convidado disponível.</p>';
+    };
+    U.$('#nomSearch',m).oninput=draw;draw();
+    m.querySelector('[data-save]').onclick=async ev=>{
+      const ids=Array.from(m.querySelectorAll('[data-nom-id]:checked')).map(x=>x.dataset.nomId);
+      if(!ids.length){U.toast('Selecione ao menos uma pessoa.','error');return;}
+      const btn=ev.currentTarget;U.setBusy(btn,true);
+      try{await A.call('setNominataGuest',{eventId:state.eventId,guestIds:ids,selected:true});m.remove();await loadEvent();await loadNominataView(c);U.toast('Nominata atualizada.','success');}
+      catch(err){U.toast(err.message,'error');}finally{U.setBusy(btn,false);}
+    };
+  }
+
+  function nominataMessageModal(data,msg,c){
+    msg=msg||{};
+    const selected=(data.selected||[]).slice().sort(U.byPrecedence);
+    const refs=['<option value="">Sem referência</option>'].concat(selected.map(g=>`<option value="${U.esc(g.ID_CONVIDADO)}" ${String(g.ID_CONVIDADO)===String(msg.ANCHOR_REF)?'selected':''}>${U.esc((g.ORDEM_PRECEDENCIA?g.ORDEM_PRECEDENCIA+' • ':'')+U.displayName(g))}</option>`)).join('');
+    const m=U.modal(msg.ID_ITEM?'Editar mensagem':'Adicionar mensagem',`
+      <div class="field"><label>Mensagem</label><textarea id="nomMsg" style="min-height:120px">${U.esc(msg.TEXTO||'')}</textarea></div>
+      <div class="form-grid" style="margin-top:12px">
+        ${selectField('Posição','nomSide',['ANTES','DEPOIS'],msg.ANCHOR_SIDE||'DEPOIS')}
+        <div class="field"><label>Autoridade de referência</label><select id="nomAnchor">${refs}</select></div>
+      </div>
+      <div class="small muted">A mensagem permanecerá nessa posição mesmo que a precedência das autoridades seja reordenada.</div>`,
+      `<button class="btn" data-close>Cancelar</button><button class="btn btn-primary" data-save>Salvar mensagem</button>`);
+    m.querySelector('[data-save]').onclick=async ev=>{
+      const btn=ev.currentTarget;U.setBusy(btn,true);
+      try{
+        const texto=U.$('#nomMsg',m).value.trim(); if(!texto)throw new Error('Informe a mensagem.');
+        if(selected.length && !U.$('#nomAnchor',m).value)throw new Error('Escolha a autoridade de referência.');
+        await A.call('saveNominataMessage',{id:msg.ID_ITEM||'',eventId:state.eventId,texto,anchorRef:U.$('#nomAnchor',m).value,anchorSide:U.$('#nomSide',m).value});
+        m.remove();await loadNominataView(c);U.toast('Mensagem salva.','success');
+      }catch(err){U.toast(err.message,'error');}finally{U.setBusy(btn,false);}
+    };
+  }
+
+  function printNominata(data){
+    const event=data.event||state.data.event||{};
+    const selectedMap={};(data.selected||[]).forEach(g=>selectedMap[String(g.ID_CONVIDADO)]=g);
+    const itens=(data.items||[]).filter(it=>it.TIPO_ITEM==='MENSAGEM' || (it.GUEST && String(it.GUEST.CHECKIN).toUpperCase()==='PRESENTE'));
+    if(!itens.length){U.toast('Não há autoridades da Nominata com chegada confirmada para imprimir.','error');return;}
+    const linhas=itens.map(it=>{
+      if(it.TIPO_ITEM==='MENSAGEM')return `<li>${U.esc(String(it.TEXTO||'').toUpperCase())}</li>`;
+      const g=it.GUEST||{}, cargo=String(g.CARGO||'').trim(), ident=[g.POSTO_GRAD,g.NOME_COMPLETO].filter(Boolean).join(' ').trim();
+      const texto=(cargo?cargo+', '+ident:ident).toUpperCase().replace(/[.\s]+$/,'')+'.';
+      const nome=String(g.NOME_COMPLETO||'').toUpperCase();
+      let html=U.esc(texto);
+      if(nome){const escapedNome=U.esc(nome);html=html.replace(escapedNome,`<strong>${escapedNome}</strong>`);}
+      return `<li>${html}</li>`;
+    }).join('');
+    const w=window.open('','_blank');
+    if(!w){U.toast('O navegador bloqueou a janela de impressão.','error');return;}
+    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Nominata - ${U.esc(event.NOME||'SGCES')}</title><style>
+      @page{size:A4;margin:25.4mm 25.4mm 25.4mm 15mm}body{font-family:Arial,sans-serif;font-size:12pt;color:#000;margin:0;line-height:1.15}
+      .head{text-align:center;line-height:1.15}.head p{margin:0}.head .last{margin-bottom:7mm}.subtitle{text-align:center;margin:0 0 9mm;font-size:11pt}
+      .intro{text-align:justify;margin:0 0 6mm}ul{margin:0;padding-left:7mm}li{margin:0 0 3.5mm 0;text-align:justify;padding-left:1mm}
+      .event{font-size:9pt;color:#555;margin-top:10mm;text-align:right}@media print{.event{display:none}}
+    </style></head><body>
+      <div class="head"><p>COMANDO DA AERONÁUTICA</p><p>Base Aérea de Brasília</p><p class="last">Cerimonial da Base Aérea de Brasília</p></div>
+      <p class="subtitle">Elementos para a montagem do Anexo à Locução na Capital Federal</p>
+      <p class="intro">A FORÇA AÉREA BRASILEIRA REGISTRA E AGRADECE A PRESENÇA DAS SEGUINTES AUTORIDADES:</p>
+      <ul>${linhas}</ul><div class="event">${U.esc(event.NOME||'')}</div>
+      <script>window.onload=()=>{window.print();};<\/script></body></html>`);
+    w.document.close();
   }
 
   function renderConteudos(){

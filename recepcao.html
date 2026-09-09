@@ -128,9 +128,8 @@ tr:hover td{background:#fbfdff}
 .table-shape.round{width:230px;height:230px;border-radius:50%}
 .table-shape.rect{width:470px;height:150px;border-radius:8px}
 .table-shape.u{width:410px;height:250px;border:20px solid #64748b;border-top:0;background:transparent;border-radius:0 0 12px 12px}
-.seat{position:absolute;transform:translate(-50%,-50%);width:130px;min-height:52px;border:1px solid #cbd5e1;background:#fff;border-radius:10px;padding:6px;text-align:center;font-size:.75rem;box-shadow:0 3px 9px rgba(15,23,42,.06)}
-.seat strong{display:block;font-size:.79rem}
-.seat .seat-code{font-size:.65rem;color:var(--muted)}
+.seat{position:absolute;transform:translate(-50%,-50%);width:48px;height:118px;border:1px solid #cbd5e1;background:#fff;border-radius:9px;padding:0;text-align:center;font-size:.74rem;box-shadow:0 3px 9px rgba(15,23,42,.06);display:flex;align-items:center;justify-content:center;overflow:visible}
+.seat .seat-vertical{width:106px;white-space:nowrap;transform:rotate(-90deg);transform-origin:center;font-weight:800;font-size:.76rem;line-height:1}
 
 /* recepção */
 .public-shell{min-height:100vh;background:var(--bg)}
@@ -296,20 +295,28 @@ tr:hover td{background:#fbfdff}
   const num = (v,d=0)=>{ const n=Number(v); return Number.isFinite(n)?n:d; };
   const fmtDate = v=>{
     if(!v) return '';
-    const d = new Date(v);
-    if(Number.isNaN(d.getTime())) return String(v);
-    return new Intl.DateTimeFormat('pt-BR',{dateStyle:'short'}).format(d);
+    const s=String(v).trim();
+    let m=s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if(m) return `${m[3]}/${m[2]}/${m[1]}`;
+    m=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    if(m) return `${String(m[1]).padStart(2,'0')}/${String(m[2]).padStart(2,'0')}/${m[3]}`;
+    const d=new Date(v);
+    if(Number.isNaN(d.getTime())) return s;
+    return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
   };
   const fmtTime = v=>{
     if(!v) return '';
-    const d = new Date(v);
-    if(Number.isNaN(d.getTime())) return String(v).slice(0,5);
-    return new Intl.DateTimeFormat('pt-BR',{hour:'2-digit',minute:'2-digit'}).format(d);
+    const s=String(v).trim();
+    const m=s.match(/(?:^|T)(\d{1,2}):(\d{2})/);
+    if(m) return `${String(m[1]).padStart(2,'0')}:${m[2]}`;
+    const d=new Date(v);
+    if(Number.isNaN(d.getTime())) return s.slice(0,5);
+    return new Intl.DateTimeFormat('pt-BR',{hour:'2-digit',minute:'2-digit',hour12:false}).format(d);
   };
   const normalize = s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
   const byPrecedence = (a,b)=>{
-    const pa=num(a.ORDEM_PRECEDENCIA||a.PRECEDENCIA,999999)||999999;
-    const pb=num(b.ORDEM_PRECEDENCIA||b.PRECEDENCIA,999999)||999999;
+    const pa=num(a.ORDEM_PRECEDENCIA,999999)||999999;
+    const pb=num(b.ORDEM_PRECEDENCIA,999999)||999999;
     return pa-pb || String(a.NOME_COMPLETO||'').localeCompare(String(b.NOME_COMPLETO||''),'pt-BR');
   };
   const displayName = g=>[g.POSTO_GRAD,g.NOME_GUERRA||g.NOME_COMPLETO].filter(Boolean).join(' ').trim();
@@ -412,7 +419,8 @@ tr:hover td{background:#fbfdff}
     (guests||[]).filter(g=>g.ASSENTO).forEach(g=>{
       const p=seatCoordinates(table,g.ASSENTO,Math.max(num(table.CAPACIDADE),guests.length));
       const s=document.createElement('div'); s.className='seat'; s.style.left=p.x+'px'; s.style.top=p.y+'px';
-      s.innerHTML=`<strong>${esc(displayName(g))}</strong><span>${esc(g.CARGO||'')}</span><div class="seat-code">${esc(g.ASSENTO)}</div>`;
+      const nome=[g.POSTO_GRAD,g.NOME_GUERRA||g.NOME_COMPLETO].filter(Boolean).join(' ');
+      s.innerHTML=`<div class="seat-vertical">${esc(nome)}</div>`;
       canvas.appendChild(s);
     });
   }
@@ -435,11 +443,42 @@ tr:hover td{background:#fbfdff}
   function showView(v){currentView=v;selectedId='';renderCurrent();if(v==='search')setTimeout(()=>U.$('#search').focus(),50);}
   function renderSearch(){showOnly('searchView');const q=U.normalize(U.$('#search').value.trim());if(q.length<2){U.$('#results').innerHTML='<p class="muted">Digite pelo menos 2 letras para iniciar a busca.</p>';return;}const list=(data.guests||[]).filter(g=>U.normalize([g.NOME_COMPLETO,g.NOME_GUERRA,g.POSTO_GRAD].join(' ')).includes(q)).slice(0,30);U.$('#results').innerHTML=list.length?list.map(g=>`<button class="search-result" data-person="${U.esc(g.ID_CONVIDADO)}"><span><strong>${U.esc(U.displayName(g))}</strong><span class="small muted">${U.esc(g.NOME_COMPLETO||'')}</span></span><span>›</span></button>`).join(''):'<p class="muted">Nenhum convidado encontrado.</p>';U.$$('#results [data-person]').forEach(b=>b.onclick=()=>{selectedId=b.dataset.person;currentView='detail';renderDetail();});}
   function groupFor(g){if(!g)return[];const root=g.ID_TITULAR||g.ID_CONVIDADO;return (data.guests||[]).filter(x=>String(x.ID_CONVIDADO)===String(root)||String(x.ID_TITULAR)===String(root));}
-  function renderDetail(){showOnly('detailView');const g=(data.guests||[]).find(x=>String(x.ID_CONVIDADO)===String(selectedId));if(!g){showView('search');return;}const t=table(g.MESA_ID);const present=String(g.CHECKIN).toUpperCase()==='PRESENTE';const group=groupFor(g);U.$('#detailView').innerHTML=`<button class="btn btn-sm view-back" data-back>← Voltar à busca</button><div class="card reception-detail"><div class="detail-head"><div class="avatar">${g.FOTO_URL?`<img src="${U.esc(U.driveImage(g.FOTO_URL))}" alt="">`:'SEM FOTO'}</div><div><h2 style="margin:0 0 5px;font-size:1.45rem">${U.esc(U.displayName(g))}</h2><div class="muted">${U.esc(g.CARGO||'')}${g.OM_ORGAO?' • '+U.esc(g.OM_ORGAO):''}</div></div></div><div><div class="small muted" style="font-weight:800">MESA</div><div class="detail-table">${U.esc(t?t.NOME:'Sem mesa definida')}</div>${g.ASSENTO?`<div class="muted">Posição: ${U.esc(g.ASSENTO)}</div>`:''}</div>${group.length>1?`<div><h3>Grupo</h3><div class="group-mini">${group.map(x=>`<div>${U.esc(U.displayName(x))} ${String(x.CHECKIN).toUpperCase()==='PRESENTE'?'<span class="badge success">CHEGOU</span>':''}</div>`).join('')}</div></div>`:''}${g.OBS_RECEPCAO?`<div><strong>Observação:</strong> ${U.esc(g.OBS_RECEPCAO)}</div>`:''}<div class="actions"><button class="btn ${present?'':'btn-success'}" data-check>${present?'Desfazer chegada':'Confirmar chegada'}</button></div>${t?`<div><h3 style="margin-bottom:8px">Localização</h3><div class="floor-wrap"><div class="floor" id="detailFloor"></div></div></div>`:''}</div>`;U.$('[data-back]',U.$('#detailView')).onclick=()=>showView('search');U.$('[data-check]',U.$('#detailView')).onclick=()=>toggleCheck(g.ID_CONVIDADO);if(t)U.renderFloor(U.$('#detailFloor'),data.tables||[],{highlightTableId:t.ID_MESA,backgroundUrl:data.event&&data.event.CROQUI_URL});}
+  function renderDetail(){
+    showOnly('detailView');
+    const g=(data.guests||[]).find(x=>String(x.ID_CONVIDADO)===String(selectedId));
+    if(!g){showView('search');return;}
+    const group=groupFor(g).slice().sort(U.byPrecedence);
+    const root=group.find(x=>!x.ID_TITULAR)||group[0]||g;
+    const t=table(g.MESA_ID||root.MESA_ID);
+    U.$('#detailView').innerHTML=`<button class="btn btn-sm view-back" data-back>← Voltar à busca</button>
+      <div class="card reception-detail">
+        <div class="detail-head">
+          <div class="avatar">${g.FOTO_URL?`<img src="${U.esc(U.driveImage(g.FOTO_URL))}" alt="">`:'SEM FOTO'}</div>
+          <div><h2 style="margin:0 0 5px;font-size:1.45rem">${U.esc(U.displayName(g))}</h2><div class="muted">${U.esc(g.CARGO||'')}${g.OM_ORGAO?' • '+U.esc(g.OM_ORGAO):''}</div></div>
+        </div>
+        <div><div class="small muted" style="font-weight:800">MESA</div><div class="detail-table">${U.esc(t?t.NOME:'Sem mesa definida')}</div>${g.ASSENTO?`<div class="muted">Posição: ${U.esc(g.ASSENTO)}</div>`:''}</div>
+        <div><h3>Confirmar chegada do grupo</h3><p class="small muted">Marque somente quem chegou agora. Quem já está confirmado aparece marcado.</p>
+          <div class="group-mini">${group.map(x=>{const arrived=String(x.CHECKIN).toUpperCase()==='PRESENTE';return `<label style="display:flex;align-items:center;gap:9px;padding:7px 0"><input type="checkbox" data-group-check="${U.esc(x.ID_CONVIDADO)}" ${arrived?'checked disabled':''}><span><strong>${U.esc(U.displayName(x))}</strong>${arrived?' <span class="badge success">CHEGOU</span>':''}</span></label>`;}).join('')}</div>
+          <div class="actions" style="margin-top:10px"><button class="btn btn-success" data-confirm-group>Confirmar selecionados</button></div>
+        </div>
+        ${g.OBS_RECEPCAO?`<div><strong>Observação:</strong> ${U.esc(g.OBS_RECEPCAO)}</div>`:''}
+        ${t?`<div><h3 style="margin-bottom:8px">Localização</h3><div class="floor-wrap"><div class="floor" id="detailFloor"></div></div></div>`:''}
+      </div>`;
+    U.$('[data-back]',U.$('#detailView')).onclick=()=>showView('search');
+    U.$('[data-confirm-group]',U.$('#detailView')).onclick=async ev=>{
+      const ids=Array.from(U.$$('#detailView [data-group-check]:checked:not(:disabled)')).map(x=>x.dataset.groupCheck);
+      if(!ids.length){U.toast('Marque quem chegou.','error');return;}
+      const b=ev.currentTarget;U.setBusy(b,true);
+      try{await A.call('groupCheckIn',{eventId,guestId:g.ID_CONVIDADO,guestIds:ids});await load();U.toast('Chegada registrada.','success');}
+      catch(e){U.toast(e.message,'error');}finally{U.setBusy(b,false);}
+    };
+    if(t)U.renderFloor(U.$('#detailFloor'),data.tables||[],{highlightTableId:t.ID_MESA,backgroundUrl:data.event&&data.event.CROQUI_URL});
+  }
   async function toggleCheck(id){const g=(data.guests||[]).find(x=>String(x.ID_CONVIDADO)===String(id));if(!g)return;try{await A.call('checkIn',{guestId:id,present:String(g.CHECKIN).toUpperCase()!=='PRESENTE'});await load();}catch(e){U.toast(e.message,'error');}}
-  function renderNominata(){showOnly('nominataView');const list=(data.nominata||[]).sort(U.byPrecedence);U.$('#nominataView').innerHTML=`<button class="btn btn-sm view-back" data-back>← Voltar à busca</button><div class="card"><div class="page-heading"><div><h2 style="font-size:1.65rem">Nominata</h2><p>${list.filter(x=>String(x.CHECKIN).toUpperCase()==='PRESENTE').length}/${list.length} autoridades chegaram.</p></div></div><div class="nominata-list">${list.length?list.map(g=>`<div class="nominata-item"><div><strong>${U.esc(U.displayName(g))}</strong><div class="small muted">${U.esc(table(g.MESA_ID)?.NOME||'Sem mesa')}</div></div>${String(g.CHECKIN).toUpperCase()==='PRESENTE'?'<span class="badge success">CHEGOU</span>':'<span class="badge warning">AGUARDANDO</span>'}<button class="btn btn-sm" data-ncheck="${U.esc(g.ID_CONVIDADO)}">${String(g.CHECKIN).toUpperCase()==='PRESENTE'?'↩':'✓'}</button></div>`).join(''):'<p class="muted">Nenhuma autoridade de interesse.</p>'}</div></div>`;U.$('[data-back]',U.$('#nominataView')).onclick=()=>showView('search');U.$$('#nominataView [data-ncheck]').forEach(b=>b.onclick=()=>toggleCheck(b.dataset.ncheck));}
+
+  function renderNominata(){showOnly('nominataView');const list=(data.nominata||[]).sort(U.byPrecedence);U.$('#nominataView').innerHTML=`<button class="btn btn-sm view-back" data-back>← Voltar à busca</button><div class="card"><div class="page-heading"><div><h2 style="font-size:1.65rem">Nominata</h2><p>${list.filter(x=>String(x.CHECKIN).toUpperCase()==='PRESENTE').length}/${list.length} autoridades chegaram.</p></div></div><div class="nominata-list">${list.length?list.map(g=>`<div class="nominata-item"><div><strong>${U.esc(U.displayName(g))}</strong><div class="small muted">${U.esc(table(g.MESA_ID)?.NOME||'Sem mesa')}</div></div>${String(g.CHECKIN).toUpperCase()==='PRESENTE'?'<span class="badge success">CHEGOU</span>':'<span class="badge warning">AGUARDANDO</span>'}<button class="btn btn-sm" data-ncheck="${U.esc(g.ID_CONVIDADO)}">${String(g.CHECKIN).toUpperCase()==='PRESENTE'?'↩':'✓'}</button></div>`).join(''):'<p class="muted">Nenhuma pessoa selecionada na Nominata.</p>'}</div></div>`;U.$('[data-back]',U.$('#nominataView')).onclick=()=>showView('search');U.$$('#nominataView [data-ncheck]').forEach(b=>b.onclick=()=>toggleCheck(b.dataset.ncheck));}
   function renderCroqui(){showOnly('croquiView');U.$('#croquiView').innerHTML=`<button class="btn btn-sm view-back" data-back>← Voltar à busca</button><div class="card"><div class="page-heading"><div><h2 style="font-size:1.65rem">Croqui e ocupação</h2><p>Toque em uma mesa para ver os convidados atribuídos.</p></div></div><div class="floor-wrap"><div class="floor" id="floor"></div></div></div>`;U.$('[data-back]',U.$('#croquiView')).onclick=()=>showView('search');U.renderFloor(U.$('#floor'),data.tables||[],{backgroundUrl:data.event&&data.event.CROQUI_URL,onClick:showTable});}
-  function showTable(t){const list=(data.guests||[]).filter(g=>String(g.MESA_ID)===String(t.ID_MESA)).sort((a,b)=>String(a.NOME_COMPLETO).localeCompare(String(b.NOME_COMPLETO),'pt-BR'));U.modal(t.NOME,`<p><strong>${U.num(t.OCUPACAO)}/${U.num(t.CAPACIDADE)}</strong> lugares atribuídos • <strong>${U.num(t.PRESENTES)}</strong> presentes • <strong>${U.num(t.VAGAS)}</strong> vagas</p>${list.length?`<div class="table-wrap"><table><thead><tr><th>Convidado</th><th>Status</th></tr></thead><tbody>${list.map(g=>`<tr><td>${U.esc(U.displayName(g))}</td><td>${U.badgeStatus(g.CHECKIN)}</td></tr>`).join('')}</tbody></table></div>`:'<p class="muted">Nenhum convidado atribuído.</p>'}`);}
+  function showTable(t){const list=(data.guests||[]).filter(g=>String(g.MESA_ID)===String(t.ID_MESA)).sort(U.byPrecedence);U.modal(t.NOME,`<p><strong>${U.num(t.OCUPACAO)}/${U.num(t.CAPACIDADE)}</strong> lugares atribuídos • <strong>${U.num(t.PRESENTES)}</strong> presentes • <strong>${U.num(t.VAGAS)}</strong> vagas</p>${list.length?`<div class="table-wrap"><table><thead><tr><th>Convidado</th><th>Status</th></tr></thead><tbody>${list.map(g=>`<tr><td>${U.esc(U.displayName(g))}</td><td>${U.badgeStatus(g.CHECKIN)}</td></tr>`).join('')}</tbody></table></div>`:'<p class="muted">Nenhum convidado atribuído.</p>'}`);}
   function table(id){return (data.tables||[]).find(t=>String(t.ID_MESA)===String(id));}
 })();
 
