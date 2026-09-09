@@ -128,8 +128,8 @@ tr:hover td{background:#fbfdff}
 .table-shape.round{width:230px;height:230px;border-radius:50%}
 .table-shape.rect{width:470px;height:150px;border-radius:8px}
 .table-shape.u{width:410px;height:250px;border:20px solid #64748b;border-top:0;background:transparent;border-radius:0 0 12px 12px}
-.seat{position:absolute;transform:translate(-50%,-50%);width:48px;height:118px;border:1px solid #cbd5e1;background:#fff;border-radius:9px;padding:0;text-align:center;font-size:.74rem;box-shadow:0 3px 9px rgba(15,23,42,.06);display:flex;align-items:center;justify-content:center;overflow:visible}
-.seat .seat-vertical{width:106px;white-space:nowrap;transform:rotate(-90deg);transform-origin:center;font-weight:800;font-size:.76rem;line-height:1}
+.seat{position:absolute;transform:translate(-50%,-50%);width:46px;height:132px;border:1px solid #cbd5e1;background:#fff;border-radius:9px;padding:0;text-align:center;font-size:.74rem;box-shadow:0 3px 9px rgba(15,23,42,.06);display:flex;align-items:center;justify-content:center;overflow:visible}
+.seat .seat-vertical{white-space:nowrap;transform:rotate(-90deg);transform-origin:center;font-weight:800;font-size:.74rem;line-height:1}
 
 /* recepção */
 .public-shell{min-height:100vh;background:var(--bg)}
@@ -417,10 +417,12 @@ tr:hover td{background:#fbfdff}
     const format=String(table.FORMATO||'REDONDA').toUpperCase();
     const shape=document.createElement('div'); shape.className='table-shape '+(format==='RETANGULAR'?'rect':format==='U'?'u':'round'); canvas.appendChild(shape);
     (guests||[]).filter(g=>g.ASSENTO).forEach(g=>{
-      const p=seatCoordinates(table,g.ASSENTO,Math.max(num(table.CAPACIDADE),guests.length));
+      const p=seatCoordinates(table,g.ASSENTO,Math.max(2,(guests||[]).length));
       const s=document.createElement('div'); s.className='seat'; s.style.left=p.x+'px'; s.style.top=p.y+'px';
       const nome=[g.POSTO_GRAD,g.NOME_GUERRA||g.NOME_COMPLETO].filter(Boolean).join(' ');
-      s.innerHTML=`<div class="seat-vertical">${esc(nome)}</div>`;
+      const cardH=Math.max(122,Math.min(190,56+nome.length*5.2));
+      s.style.height=cardH+'px';
+      s.innerHTML=`<div class="seat-vertical" style="width:${Math.max(108,cardH-14)}px;font-size:${nome.length>25?'.68rem':nome.length>20?'.71rem':'.74rem'}">${esc(nome)}</div>`;
       canvas.appendChild(s);
     });
   }
@@ -454,7 +456,7 @@ tr:hover td{background:#fbfdff}
       <div class="card reception-detail">
         <div class="detail-head">
           <div class="avatar">${g.FOTO_URL?`<img src="${U.esc(U.driveImage(g.FOTO_URL))}" alt="">`:'SEM FOTO'}</div>
-          <div><h2 style="margin:0 0 5px;font-size:1.45rem">${U.esc(U.displayName(g))}</h2><div class="muted">${U.esc(g.CARGO||'')}${g.OM_ORGAO?' • '+U.esc(g.OM_ORGAO):''}</div></div>
+          <div><h2 style="margin:0 0 5px;font-size:1.45rem">${U.esc([g.POSTO_GRAD,g.NOME_COMPLETO].filter(Boolean).join(' '))}</h2>${g.ID_TITULAR?`<div class="muted">Integrante de grupo</div>`:''}</div>
         </div>
         <div><div class="small muted" style="font-weight:800">MESA</div><div class="detail-table">${U.esc(t?t.NOME:'Sem mesa definida')}</div>${g.ASSENTO?`<div class="muted">Posição: ${U.esc(g.ASSENTO)}</div>`:''}</div>
         <div><h3>Confirmar chegada do grupo</h3><p class="small muted">Marque somente quem chegou agora. Quem já está confirmado aparece marcado.</p>

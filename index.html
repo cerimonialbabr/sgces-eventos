@@ -131,12 +131,12 @@ tr:hover td{background:#fbfdff}
 .table-shape.round{width:230px;height:230px;border-radius:50%}
 .table-shape.rect{width:470px;height:150px;border-radius:8px}
 .table-shape.u{width:410px;height:250px;border:20px solid #64748b;border-top:0;background:transparent;border-radius:0 0 12px 12px}
-.seat{position:absolute;transform:translate(-50%,-50%);width:48px;height:118px;border:1px solid #cbd5e1;background:#fff;border-radius:9px;padding:0;text-align:center;font-size:.74rem;box-shadow:0 3px 9px rgba(15,23,42,.06);display:flex;align-items:center;justify-content:center;overflow:visible}
-.seat .seat-vertical{width:106px;white-space:nowrap;transform:rotate(-90deg);transform-origin:center;font-weight:800;font-size:.76rem;line-height:1}
+.seat{position:absolute;transform:translate(-50%,-50%);width:46px;height:132px;border:1px solid #cbd5e1;background:#fff;border-radius:9px;padding:0;text-align:center;font-size:.74rem;box-shadow:0 3px 9px rgba(15,23,42,.06);display:flex;align-items:center;justify-content:center;overflow:visible}
+.seat .seat-vertical{white-space:nowrap;transform:rotate(-90deg);transform-origin:center;font-weight:800;font-size:.74rem;line-height:1}
 .photo-upload-box{display:grid;grid-template-columns:86px 1fr;gap:12px;align-items:center;border:1px dashed #cbd5e1;border-radius:12px;padding:10px}
 .photo-preview{width:86px;height:86px;border-radius:12px;background:#eef2f7;display:flex;align-items:center;justify-content:center;overflow:hidden;color:#7c899b;font-size:.72rem;font-weight:800;text-align:center}
 .photo-preview img{width:100%;height:100%;object-fit:cover}
-.nominata-editor{display:grid;grid-template-columns:minmax(260px,.8fr) minmax(0,1.7fr);gap:16px}
+.nominata-editor{display:block}
 .nom-item{border:1px solid var(--line);border-radius:11px;padding:11px 12px;background:#fff}
 .nom-item.message{background:#f8fafc;border-style:dashed}
 @media(max-width:900px){.nominata-editor{grid-template-columns:1fr}}
@@ -228,7 +228,7 @@ tr:hover td{background:#fbfdff}
       <button data-view="conteudos">Conteúdos</button>
       <button data-view="acessos">Acessos</button>
     </nav>
-    <div class="sidebar-footer">SGCES v1.3.0</div>
+    <div class="sidebar-footer">SGCES v1.3.1</div>
   </aside>
 
   <main class="main">
@@ -514,11 +514,13 @@ tr:hover td{background:#fbfdff}
     const format=String(table.FORMATO||'REDONDA').toUpperCase();
     const shape=document.createElement('div'); shape.className='table-shape '+(format==='RETANGULAR'?'rect':format==='U'?'u':'round'); canvas.appendChild(shape);
     (guests||[]).filter(g=>g.ASSENTO).forEach(g=>{
-      const p=seatCoordinates(table,g.ASSENTO,Math.max(num(table.CAPACIDADE),guests.length));
+      const p=seatCoordinates(table,g.ASSENTO,Math.max(2,(guests||[]).length));
       const s=document.createElement('div'); s.className='seat'; s.style.left=p.x+'px'; s.style.top=p.y+'px';
       const nome=[g.POSTO_GRAD,g.NOME_GUERRA||g.NOME_COMPLETO].filter(Boolean).join(' ');
       s.title=[nome,g.CARGO,g.NOME_COMPLETO].filter(Boolean).join(' • ');
-      s.innerHTML=`<div class="seat-vertical">${esc(nome)}</div>`;
+      const cardH=Math.max(122,Math.min(190,56+nome.length*5.2));
+      s.style.height=cardH+'px';
+      s.innerHTML=`<div class="seat-vertical" style="width:${Math.max(108,cardH-14)}px;font-size:${nome.length>25?'.68rem':nome.length>20?'.71rem':'.74rem'}">${esc(nome)}</div>`;
       canvas.appendChild(s);
     });
   }
@@ -686,7 +688,7 @@ tr:hover td{background:#fbfdff}
     const guests=state.data.guests||[];
     c.innerHTML=heading('Convidados','Cadastro, autoridades, acompanhantes e posição no evento.',`<button class="btn" data-import>Importar lista</button><button class="btn btn-primary" data-add>Adicionar convidado</button>`)+`
       <div class="card">
-        <div class="section-actions"><input id="guestSearch" class="search-input" placeholder="Buscar por nome, posto, cargo, OM ou mesa" style="max-width:520px"><span class="muted small">${guests.length} registro(s)</span></div>
+        <div class="section-actions"><input id="guestSearch" class="search-input" placeholder="Buscar por nome, posto ou mesa" style="max-width:520px"><span class="muted small">${guests.length} registro(s)</span></div>
         <div id="guestTable"></div>
       </div>`;
     c.querySelector('[data-add]').onclick=()=>guestModal();
@@ -701,13 +703,19 @@ tr:hover td{background:#fbfdff}
     let rows=(state.data.guests||[])
       .filter(g=>!n||U.normalize([g.NOME_COMPLETO,g.NOME_GUERRA,g.POSTO_GRAD,g.CARGO,g.OM_ORGAO,tableFor(g.MESA_ID)?.NOME].join(' ')).includes(n))
       .slice().sort(U.byPrecedence);
-    root.innerHTML=rows.length?`<div class="table-wrap"><table><thead><tr><th>Ord.</th><th>Convidado</th><th>Cargo / OM</th><th>Mesa</th><th>RSVP</th><th>Chegada</th><th></th></tr></thead><tbody>${rows.map(g=>`<tr>
-      <td><strong>${U.esc(g.ORDEM_PRECEDENCIA||'—')}</strong></td>
-      <td><strong>${U.esc(U.displayName(g))}</strong>${U.yes(g.NOMINATA)?'<div><span class="badge info">NOMINATA</span></div>':''}<div class="small muted">${U.esc(g.NIVEL||'CONVIDADO')}</div></td>
-      <td>${U.esc(g.CARGO||'')}<div class="small muted">${U.esc(g.OM_ORGAO||'')}</div></td>
-      <td>${U.esc(tableFor(g.MESA_ID)?.NOME||'—')}${g.ASSENTO?`<div class="small muted">${U.esc(g.ASSENTO)}</div>`:''}</td>
-      <td>${U.badgeStatus(g.RSVP)}</td><td>${U.badgeStatus(g.CHECKIN)}</td>
-      <td class="nowrap"><button class="btn btn-sm" data-reorder-g="${U.esc(g.ID_CONVIDADO)}">Reordenar</button> <button class="btn btn-sm" data-edit-g="${U.esc(g.ID_CONVIDADO)}">Editar</button> <button class="btn btn-sm btn-danger" data-del-g="${U.esc(g.ID_CONVIDADO)}">Excluir</button></td></tr>`).join('')}</tbody></table></div>`:'<p class="muted">Nenhum convidado encontrado.</p>';
+    root.innerHTML=rows.length?`<div class="table-wrap"><table><thead><tr><th>Ord.</th><th>Convidado</th><th>Mesa</th><th>RSVP</th><th>Chegada</th><th></th></tr></thead><tbody>${rows.map(g=>{
+      const titular=g.ID_TITULAR?guestById(g.ID_TITULAR):null;
+      const nomeCompleto=[g.POSTO_GRAD,g.NOME_COMPLETO].filter(Boolean).join(' ');
+      const titularTxt=titular?`<div class="small muted" style="margin-top:4px">Titular: ${U.esc([titular.POSTO_GRAD,titular.NOME_COMPLETO].filter(Boolean).join(' '))}</div>`:'';
+      const nom=U.yes(g.NOMINATA)?'<div style="margin-top:4px"><span class="badge info">NOMINATA</span></div>':'';
+      return `<tr>
+        <td><strong>${U.esc(g.ORDEM_PRECEDENCIA||'—')}</strong></td>
+        <td><strong>${U.esc(nomeCompleto||g.NOME_COMPLETO||'')}</strong>${titularTxt}${nom}</td>
+        <td>${U.esc(tableFor(g.MESA_ID)?.NOME||'—')}</td>
+        <td>${U.badgeStatus(g.RSVP)}</td><td>${U.badgeStatus(g.CHECKIN)}</td>
+        <td class="nowrap"><button class="btn btn-sm" data-reorder-g="${U.esc(g.ID_CONVIDADO)}">Reordenar</button> <button class="btn btn-sm" data-edit-g="${U.esc(g.ID_CONVIDADO)}">Editar</button> <button class="btn btn-sm btn-danger" data-del-g="${U.esc(g.ID_CONVIDADO)}">Excluir</button></td>
+      </tr>`;
+    }).join('')}</tbody></table></div>`:'<p class="muted">Nenhum convidado encontrado.</p>';
     root.querySelectorAll('[data-reorder-g]').forEach(b=>b.onclick=()=>reorderGuestModal(guestById(b.dataset.reorderG)));
     root.querySelectorAll('[data-edit-g]').forEach(b=>b.onclick=()=>guestModal(guestById(b.dataset.editG)));
     root.querySelectorAll('[data-del-g]').forEach(b=>b.onclick=()=>{const g=guestById(b.dataset.delG);if(confirm(`Excluir ${g.NOME_COMPLETO}?`))runBusy(async()=>{await A.call('deleteGuest',{guestId:g.ID_CONVIDADO});await loadEvent();renderConvidados();U.toast('Convidado excluído.','success');});});
@@ -940,10 +948,11 @@ tr:hover td{background:#fbfdff}
     const tables=(state.data.tables||[]).filter(t=>U.yes(t.USA_ICA));
     if(!state.selectedCerimonialTable && tables.length)state.selectedCerimonialTable=tables[0].ID_MESA;
     const t=tableById(state.selectedCerimonialTable); const seated=t?(state.data.guests||[]).filter(g=>String(g.MESA_ID)===String(t.ID_MESA)):[];
+    const regraIca=t&&String(t.FORMATO||'').toUpperCase()==='RETANGULAR'&&String(t.COMPOSICAO||'').toUpperCase()==='DESACOMPANHADOS'?(U.yes(t.ANFITRIAO_MAIOR_PRECEDENCIA)?'ICA 7.3.5':'ICA 7.3.6'):'';
     c.innerHTML=heading('Cerimonial','Composição das mesas conforme o motor baseado no extrato da ICA 908-1.',t?`<button class="btn" data-clear>Limpar assentos</button><button class="btn btn-primary" data-compose>Compor pela ICA</button>`:'')+`
       <div class="grid grid-2" style="grid-template-columns:320px 1fr">
         <div class="card"><h3>Mesas com ICA</h3>${tables.length?tables.map(x=>`<button class="btn ${String(x.ID_MESA)===String(state.selectedCerimonialTable)?'btn-soft':''}" style="width:100%;margin-bottom:7px;justify-content:flex-start" data-ct="${U.esc(x.ID_MESA)}">${U.esc(x.NOME)} • ${U.esc(x.FORMATO)}</button>`).join(''):'<p class="muted">Marque “Usar ICA 908-1” na configuração de uma mesa.</p>'}</div>
-        <div class="card">${t?`<div class="section-actions"><div><h3 style="margin:0">${U.esc(t.NOME)}</h3><div class="small muted">${U.esc(t.FORMATO)} • ${U.esc(t.COMPOSICAO)} • ${seated.length}/${U.num(t.CAPACIDADE)} convidados</div></div><button class="btn btn-sm" data-edit-table>Editar configuração</button></div><div class="seating-stage" id="seatingStage"></div><div class="small muted" style="margin-top:10px">Para capacidades diferentes das ilustrações do extrato, o motor prolonga o padrão geométrico da ICA. Assentos podem ser ajustados manualmente no cadastro do convidado.</div>`:'<p class="muted">Selecione uma mesa.</p>'}</div>
+        <div class="card">${t?`<div class="section-actions"><div><h3 style="margin:0">${U.esc(t.NOME)}</h3><div class="small muted">${U.esc(t.FORMATO)} • ${U.esc(t.COMPOSICAO)}${regraIca?' • '+regraIca:''} • ${seated.length}/${U.num(t.CAPACIDADE)} convidados</div></div><button class="btn btn-sm" data-edit-table>Editar configuração</button></div><div class="seating-stage" id="seatingStage"></div><div class="small muted" style="margin-top:10px">A composição usa a quantidade real de pessoas sentadas. Nos itens 7.3.5 e 7.3.6, a sequência é gerada diretamente a partir do padrão dos diagramas da ICA, inclusive a mudança de eixo quando a face da mesa possui número par de lugares.</div>`:'<p class="muted">Selecione uma mesa.</p>'}</div>
       </div>`;
     c.querySelectorAll('[data-ct]').forEach(b=>b.onclick=()=>{state.selectedCerimonialTable=b.dataset.ct;renderCerimonial();});
     if(t){
@@ -971,25 +980,19 @@ tr:hover td{background:#fbfdff}
 
   function drawNominataView(c,data){
     const items=data.items||[], selected=data.selected||[];
-    c.innerHTML=heading('Nominata','Selecione quem entra na Nominata. Autoridades seguem a precedência do evento; mensagens ficam ancoradas antes ou depois da autoridade escolhida.',
+    c.innerHTML=heading('Nominata','A tela abaixo reproduz a ordem e o texto que serão utilizados na Nominata impressa. As autoridades seguem a precedência do evento; mensagens podem ser posicionadas antes ou depois de uma autoridade.',
       `<button class="btn" data-add-nom>Adicionar à Nominata</button><button class="btn" data-add-msg>Adicionar mensagem</button><button class="btn btn-primary" data-print>Imprimir Nominata</button>`)+`
-      <div class="nominata-editor">
-        <div class="card">
-          <h3>Selecionados</h3>
-          <p class="small muted">${selected.length} pessoa(s) selecionada(s).</p>
-          ${selected.length?`<div class="nominata-list">${selected.map(g=>`<div class="nominata-item"><div><strong>${U.esc((g.ORDEM_PRECEDENCIA?g.ORDEM_PRECEDENCIA+' • ':'')+U.displayName(g))}</strong><div class="small muted">${U.esc(g.CARGO||'')}${g.MESA_ID?' • '+U.esc(tableFor(g.MESA_ID)?.NOME||''):''}</div></div><div>${U.badgeStatus(g.CHECKIN)}</div><button class="btn btn-sm btn-danger" data-remove-nom="${U.esc(g.ID_CONVIDADO)}">Remover</button></div>`).join('')}</div>`:'<p class="muted">Nenhuma pessoa selecionada.</p>'}
-        </div>
-        <div class="card">
-          <div class="section-actions"><div><h3 style="margin:0">Ordem de leitura</h3><div class="small muted">A ordem das autoridades é automática. Somente as mensagens podem ser ancoradas entre elas.</div></div></div>
-          ${items.length?`<div style="display:grid;gap:8px;margin-top:12px">${items.map((it,i)=>{
-            if(it.TIPO_ITEM==='MENSAGEM'){
-              const ref=selected.find(g=>String(g.ID_CONVIDADO)===String(it.ANCHOR_REF));
-              return `<div class="nom-item message"><div class="section-actions"><div><strong>MENSAGEM</strong><div style="margin-top:5px">${U.esc(it.TEXTO||'')}</div><div class="small muted" style="margin-top:5px">${ref?U.esc((it.ANCHOR_SIDE==='ANTES'?'Antes de ':'Depois de ')+U.displayName(ref)):'Ao final da Nominata'}</div></div><div class="actions"><button class="btn btn-sm" data-edit-msg="${U.esc(it.ID_ITEM)}">Editar</button><button class="btn btn-sm btn-danger" data-del-msg="${U.esc(it.ID_ITEM)}">Excluir</button></div></div></div>`;
-            }
-            const g=it.GUEST||{};
-            return `<div class="nom-item"><div class="section-actions"><div><strong>${U.esc(U.displayName(g))}</strong><div class="small muted">${U.esc(g.CARGO||'')}${g.MESA_ID?' • '+U.esc(tableFor(g.MESA_ID)?.NOME||''):''}</div></div><div class="actions">${U.badgeStatus(g.RSVP)} ${U.badgeStatus(g.CHECKIN)} <button class="btn btn-sm ${String(g.CHECKIN).toUpperCase()==='PRESENTE'?'':'btn-success'}" data-check-nom="${U.esc(g.ID_CONVIDADO)}">${String(g.CHECKIN).toUpperCase()==='PRESENTE'?'Desfazer chegada':'Confirmar chegada'}</button></div></div></div>`;
-          }).join('')}</div>`:'<p class="muted">A Nominata está vazia.</p>'}
-        </div>
+      <div class="card">
+        <div class="section-actions"><div><h3 style="margin:0">Ordem de leitura</h3><div class="small muted">${selected.length} autoridade(s) selecionada(s).</div></div></div>
+        ${items.length?`<div style="display:grid;gap:8px;margin-top:12px">${items.map(it=>{
+          if(it.TIPO_ITEM==='MENSAGEM'){
+            const ref=selected.find(g=>String(g.ID_CONVIDADO)===String(it.ANCHOR_REF));
+            return `<div class="nom-item message"><div class="section-actions"><div><strong>${U.esc(String(it.TEXTO||'').toUpperCase())}</strong><div class="small muted" style="margin-top:5px">${ref?U.esc((it.ANCHOR_SIDE==='ANTES'?'Antes de ':'Depois de ')+nominataText(ref)):'Ao final da Nominata'}</div></div><div class="actions"><button class="btn btn-sm" data-edit-msg="${U.esc(it.ID_ITEM)}">Editar</button><button class="btn btn-sm btn-danger" data-del-msg="${U.esc(it.ID_ITEM)}">Excluir</button></div></div></div>`;
+          }
+          const g=it.GUEST||{};
+          const presente=String(g.CHECKIN||'').toUpperCase()==='PRESENTE';
+          return `<div class="nom-item"><div class="section-actions"><div><strong>${U.esc(nominataText(g))}</strong></div><div class="actions">${U.badgeStatus(g.CHECKIN)} <button class="btn btn-sm ${presente?'':'btn-success'}" data-check-nom="${U.esc(g.ID_CONVIDADO)}">${presente?'Desfazer chegada':'Confirmar chegada'}</button> <button class="btn btn-sm btn-danger" data-remove-nom="${U.esc(g.ID_CONVIDADO)}">Remover</button></div></div></div>`;
+        }).join('')}</div>`:'<p class="muted">A Nominata está vazia.</p>'}
       </div>`;
 
     c.querySelector('[data-add-nom]').onclick=()=>nominataSelectModal(data,c);
@@ -1010,7 +1013,7 @@ tr:hover td{background:#fbfdff}
     const draw=()=>{
       const q=U.normalize(U.$('#nomSearch',m).value);
       const rows=cand.filter(g=>!q||U.normalize([g.POSTO_GRAD,g.NOME_COMPLETO,g.NOME_GUERRA,g.CARGO,g.OM_ORGAO].join(' ')).includes(q));
-      U.$('#nomCandidates',m).innerHTML=rows.length?rows.map(g=>`<label class="nominata-item" style="grid-template-columns:auto 1fr;margin-bottom:7px;cursor:pointer"><input type="checkbox" data-nom-id="${U.esc(g.ID_CONVIDADO)}"><div><strong>${U.esc((g.ORDEM_PRECEDENCIA?g.ORDEM_PRECEDENCIA+' • ':'')+U.displayName(g))}</strong><div class="small muted">${U.esc(g.CARGO||'')}</div></div></label>`).join(''):'<p class="muted">Nenhum convidado disponível.</p>';
+      U.$('#nomCandidates',m).innerHTML=rows.length?rows.map(g=>`<label class="nominata-item" style="grid-template-columns:auto 1fr;margin-bottom:7px;cursor:pointer"><input type="checkbox" data-nom-id="${U.esc(g.ID_CONVIDADO)}"><div><strong>${U.esc(nominataText(g))}</strong></div></label>`).join(''):'<p class="muted">Nenhum convidado disponível.</p>';
     };
     U.$('#nomSearch',m).oninput=draw;draw();
     m.querySelector('[data-save]').onclick=async ev=>{
@@ -1045,6 +1048,13 @@ tr:hover td{background:#fbfdff}
     };
   }
 
+  function nominataText(g){
+    g=g||{};
+    const cargo=String(g.CARGO||'').trim();
+    const ident=[g.POSTO_GRAD,g.NOME_COMPLETO].filter(Boolean).join(' ').trim();
+    return (cargo?cargo+', '+ident:ident).toUpperCase().replace(/[.\s]+$/,'')+'.';
+  }
+
   function printNominata(data){
     const event=data.event||state.data.event||{};
     const selectedMap={};(data.selected||[]).forEach(g=>selectedMap[String(g.ID_CONVIDADO)]=g);
@@ -1052,8 +1062,7 @@ tr:hover td{background:#fbfdff}
     if(!itens.length){U.toast('Não há autoridades da Nominata com chegada confirmada para imprimir.','error');return;}
     const linhas=itens.map(it=>{
       if(it.TIPO_ITEM==='MENSAGEM')return `<li>${U.esc(String(it.TEXTO||'').toUpperCase())}</li>`;
-      const g=it.GUEST||{}, cargo=String(g.CARGO||'').trim(), ident=[g.POSTO_GRAD,g.NOME_COMPLETO].filter(Boolean).join(' ').trim();
-      const texto=(cargo?cargo+', '+ident:ident).toUpperCase().replace(/[.\s]+$/,'')+'.';
+      const g=it.GUEST||{}, texto=nominataText(g);
       const nome=String(g.NOME_COMPLETO||'').toUpperCase();
       let html=U.esc(texto);
       if(nome){const escapedNome=U.esc(nome);html=html.replace(escapedNome,`<strong>${escapedNome}</strong>`);}
