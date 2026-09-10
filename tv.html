@@ -110,8 +110,9 @@ tr:hover td{background:#fbfdff}
 
 /* croqui */
 .floor-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
-.floor-wrap{background:#fff;border:1px solid var(--line);border-radius:16px;padding:12px;overflow:auto}
-.floor{position:relative;min-width:760px;aspect-ratio:16/9;background:linear-gradient(90deg,#f8fafc 24px,transparent 24px),linear-gradient(#f8fafc 24px,transparent 24px);background-size:25px 25px;border:1px dashed #cbd5e1;border-radius:12px;overflow:hidden}
+.floor-zoom-controls{display:flex;gap:6px;align-items:center}.floor-zoom-controls .btn{min-width:38px}.floor-pan-hint{font-size:.75rem;color:var(--muted)}
+.floor-wrap{position:relative;background:#fff;border:1px solid var(--line);border-radius:16px;padding:0;overflow:hidden;touch-action:none}
+.floor{position:relative;width:100%;min-width:0;aspect-ratio:16/9;background:linear-gradient(90deg,#f8fafc 24px,transparent 24px),linear-gradient(#f8fafc 24px,transparent 24px);background-size:25px 25px;border:1px dashed #cbd5e1;border-radius:12px;overflow:hidden}
 .floor-table{position:absolute;transform:translate(-50%,-50%);display:flex;align-items:center;justify-content:center;text-align:center;background:#eef4fb;border:2px solid #7d9fc8;color:#183b68;font-weight:800;user-select:none;touch-action:none;box-shadow:0 5px 14px rgba(15,23,42,.08);cursor:grab}
 .floor-table.round{border-radius:50%}
 .floor-table.rect{border-radius:9px}
@@ -120,6 +121,8 @@ tr:hover td{background:#fbfdff}
 .floor-table .occ{display:block;font-size:.72rem;font-weight:700;margin-top:2px;color:#52708f}
 .floor-table.highlight{outline:5px solid rgba(22,163,74,.25);background:#dcfce7 !important;border-color:#16a34a !important;color:#14532d !important}
 .floor-table.full{background:#fff1f2;border-color:#e11d48;color:#881337}
+.floor-table.locked{opacity:.58;cursor:not-allowed;filter:grayscale(.25)}
+.floor-table.selectable{cursor:pointer}.floor-table.selectable:hover{outline:4px solid rgba(23,63,116,.18)}
 
 /* composição da mesa */
 .seating-stage{position:relative;min-height:520px;background:#fbfdff;border:1px solid var(--line);border-radius:16px;overflow:auto}
@@ -224,39 +227,43 @@ tr:hover td{background:#fbfdff}
     return /^https:\/\/script\.google\.com\//.test(u) || /^https:\/\/script\.googleusercontent\.com\//.test(u);
   }
 
-  function call(action, payload, timeoutMs){
-    payload = payload || {};
-    timeoutMs = timeoutMs || 25000;
-    if(!readyApi()) return Promise.reject(new Error('Configure a URL do Web App em config.js.'));
-
+  function callOnce(action,payload,timeoutMs){
+    payload=payload||{};
+    timeoutMs=timeoutMs||45000;
+    if(!readyApi())return Promise.reject(new Error('Configure a URL do Web App em config.js.'));
     return new Promise((resolve,reject)=>{
-      const id = 'sgces_cb_' + Date.now() + '_' + (++seq);
-      const script = document.createElement('script');
-      const timer = setTimeout(()=>finish(new Error('Tempo esgotado ao consultar a API.')), timeoutMs);
-
-      function finish(err, data){
-        clearTimeout(timer);
-        try{ delete window[id]; }catch(e){ window[id]=undefined; }
-        if(script.parentNode) script.parentNode.removeChild(script);
-        pending.delete(id);
-        if(err) reject(err); else resolve(data);
+      const id='sgces_cb_'+Date.now()+'_'+(++seq);
+      const script=document.createElement('script');
+      let done=false;
+      const timer=setTimeout(()=>finish(new Error('Tempo esgotado ao consultar a API.')),timeoutMs);
+      function finish(err,data){
+        if(done)return;done=true;clearTimeout(timer);
+        try{delete window[id];}catch(e){window[id]=undefined;}
+        if(script.parentNode)script.parentNode.removeChild(script);
+        if(err)reject(err);else resolve(data);
       }
-
-      window[id] = function(response){
-        if(!response || response.ok !== true) return finish(new Error(response && response.error ? response.error : 'Falha na API.'));
-        finish(null, response.data);
+      window[id]=function(response){
+        if(!response||response.ok!==true)return finish(new Error(response&&response.error?response.error:'Falha na API.'));
+        finish(null,response.data);
       };
-
-      const qs = new URLSearchParams();
-      qs.set('action', action);
-      qs.set('payload', JSON.stringify(payload));
-      qs.set('callback', id);
-      qs.set('_', Date.now());
-      script.src = window.SGCES_CONFIG.API_URL + (window.SGCES_CONFIG.API_URL.includes('?') ? '&' : '?') + qs.toString();
-      script.onerror = ()=>finish(new Error('Não foi possível carregar a API do SGCES.'));
+      const qs=new URLSearchParams();
+      qs.set('action',action);qs.set('payload',JSON.stringify(payload));qs.set('callback',id);qs.set('_',Date.now());
+      script.src=window.SGCES_CONFIG.API_URL+(window.SGCES_CONFIG.API_URL.includes('?')?'&':'?')+qs.toString();
+      script.onerror=()=>finish(new Error('Não foi possível carregar a API do SGCES.'));
       document.head.appendChild(script);
-      pending.set(id, {script,timer});
     });
+  }
+
+  async function call(action,payload,timeoutMs){
+    const safeRetry=['ping','bootstrap','eventData','receptionData','tvData','guestSearch','guestGroup','tableGuests','publicConfig','nominataData','seatingOverview'];
+    try{
+      return await callOnce(action,payload,timeoutMs||45000);
+    }catch(err){
+      const retry=safeRetry.includes(String(action||''))&&/(tempo esgotado|carregar a api|network|failed)/i.test(String(err&&err.message||err));
+      if(!retry)throw err;
+      await new Promise(r=>setTimeout(r,700));
+      return callOnce(action,payload,Math.max(timeoutMs||45000,65000));
+    }
   }
 
   window.SGCES_API = { call, readyApi };
@@ -336,62 +343,95 @@ tr:hover td{background:#fbfdff}
     let cls='';
     if(['PRESENTE','CONFIRMADO','SIM','ATIVO'].includes(s)) cls='success';
     else if(['PENDENTE','RASCUNHO'].includes(s)) cls='warning';
-    else if(['NÃO COMPARECERÁ','NAO COMPARECERA','ARQUIVADO','NAO'].includes(s)) cls='danger';
+    else if(['NÃO COMPARECERÁ','NAO COMPARECERA','ARQUIVADO','CANCELADO','NAO'].includes(s)) cls='danger';
     return `<span class="badge ${cls}">${esc(v||'—')}</span>`;
   }
 
   function renderFloor(container,tables,opts){
-    opts=opts||{}; container.innerHTML=''; container.classList.add(opts.tv?'tv-floor':'floor');
-    const bg=opts.backgroundUrl||'';
-    container.style.backgroundImage=bg?`url("${driveImage(bg).replace(/"/g,'%22')}")`:'';
-    container.style.backgroundSize='contain'; container.style.backgroundRepeat='no-repeat'; container.style.backgroundPosition='center';
+    opts=opts||{};
+    container.innerHTML='';
+    container.classList.add(opts.tv?'tv-floor':'floor');
+    const bg=String(opts.backgroundUrl||'').trim();
+    if(bg){
+      container.style.backgroundImage=`url("${driveImage(bg).replace(/"/g,'%22')}")`;
+      container.style.backgroundSize='cover';
+      container.style.backgroundPosition='center';
+      container.style.backgroundRepeat='no-repeat';
+    }else{
+      container.style.backgroundImage='';
+      container.style.backgroundSize='';
+      container.style.backgroundPosition='';
+      container.style.backgroundRepeat='';
+    }
     const highlighted=String(opts.highlightTableId||'');
-    const rect=container.getBoundingClientRect();
-    const ratio=(rect.width&&rect.height)?rect.width/rect.height:(16/9);
+    const ratio=(container.clientWidth&&container.clientHeight)?container.clientWidth/container.clientHeight:(16/9);
     (tables||[]).forEach(t=>{
       const el=document.createElement('div');
       const shape=String(t.FORMATO||'REDONDA').toUpperCase();
       el.className='floor-table '+(shape==='RETANGULAR'?'rect':shape==='U'?'u':'round');
-      if(String(t.ID_MESA)===highlighted) el.classList.add('highlight');
-      if(num(t.VAGAS,1)<=0 && num(t.CAPACIDADE)>0) el.classList.add('full');
-      el.dataset.id=t.ID_MESA;
+      if(String(t.ID_MESA)===highlighted)el.classList.add('highlight');
+      const locked=typeof opts.isLocked==='function'?!!opts.isLocked(t):false;
+      const selectable=typeof opts.isSelectable==='function'?!!opts.isSelectable(t):false;
+      if(locked)el.classList.add('locked');
+      if(selectable)el.classList.add('selectable');
+      if(!locked&&num(t.VAGAS,1)<=0&&num(t.CAPACIDADE)>0)el.classList.add('full');
+      el.dataset.id=t.ID_MESA;el.dataset.shape=shape;if(t.OBS)el.title=String(t.OBS);
       const w=num(t.W,shape==='RETANGULAR'?18:10);
       const h=shape==='REDONDA'?w*ratio:num(t.H,shape==='RETANGULAR'?8:10);
-      el.style.left=num(t.X,50)+'%'; el.style.top=num(t.Y,50)+'%'; el.style.width=w+'%'; el.style.height=h+'%';
+      el.style.left=num(t.X,50)+'%';el.style.top=num(t.Y,50)+'%';el.style.width=w+'%';el.style.height=h+'%';
       el.style.transform=`translate(-50%,-50%) rotate(${num(t.ROTACAO,0)}deg)`;
-      const occ = typeof t.OCUPACAO!=='undefined' ? `<span class="occ">${num(t.OCUPACAO)}/${num(t.CAPACIDADE)}${typeof t.VAGAS!=='undefined'?' • '+num(t.VAGAS)+' vaga(s)':''}</span>` : '';
-      el.innerHTML=`<div>${esc(t.NOME||('Mesa '+t.NUMERO))}${occ}</div>`;
-      if(opts.onClick) el.addEventListener('click',()=>opts.onClick(t,el));
+      let occ='';
+      if(typeof opts.occupancyLabel==='function'){
+        const label=opts.occupancyLabel(t);
+        if(label!==null&&typeof label!=='undefined'&&String(label)!=='')occ=`<span class="occ">${esc(label)}</span>`;
+      }else if(typeof t.OCUPACAO!=='undefined'){
+        occ=`<span class="occ">${num(t.OCUPACAO)}/${num(t.CAPACIDADE)}${typeof t.VAGAS!=='undefined'?' • '+num(t.VAGAS)+' vaga(s)':''}</span>`;
+      }
+      el.innerHTML=`<div>${esc(t.NOME||('Mesa '+t.NUMERO))}${occ}</div>${opts.editor?'<span class="resize-handle" title="Redimensionar"></span>':''}`;
+      if(opts.onClick)el.addEventListener('click',ev=>{if(locked)return;opts.onClick(t,el,ev);});
       container.appendChild(el);
     });
   }
 
   function seatCoordinates(table, seatCode, total){
     const format=String(table.FORMATO||'REDONDA').toUpperCase();
-    total=Math.max(num(table.CAPACIDADE,8),total||0);
+    total=Math.max(1,total||num(table.CAPACIDADE,8));
     if(format==='REDONDA'){
-      const i=num(String(seatCode).replace('R',''),0), angle=(-90)+(360*i/total), rad=190;
-      return {x:450+Math.cos(angle*Math.PI/180)*rad,y:250+Math.sin(angle*Math.PI/180)*rad};
+      const i=num(String(seatCode).replace('R',''),0),angle=(-90)+(360*i/total),rad=190;
+      return{x:450+Math.cos(angle*Math.PI/180)*rad,y:250+Math.sin(angle*Math.PI/180)*rad};
     }
     if(format==='U'){
-      const pos=num(String(seatCode).replace('U',''),1);
-      // Posições 1.. alternam a partir do centro da base e depois sobem pelas laterais.
-      const baseCount=Math.min(5,total), sideRest=Math.max(0,total-baseCount), leftCount=Math.ceil(sideRest/2), rightCount=Math.floor(sideRest/2);
+      const pos=Math.max(1,num(String(seatCode).replace('U',''),1));
+      const requested=Math.max(1,num(table.U_CABECEIRA_QTD,5));
+      const baseCount=Math.min(total,requested);
       if(pos<=baseCount){
-        const order=[0,1,-1,2,-2]; const offset=order[pos-1]||0; return {x:450+offset*82,y:405};
+        // A precedência começa no centro da cabeceira: 1, 2 à direita, 3 à esquerda...
+        const side=Math.ceil((pos-1)/2);
+        const dir=pos===1?0:(pos%2===0?1:-1);
+        const maxSide=Math.max(1,Math.ceil((baseCount-1)/2));
+        const spacing=Math.min(82,185/maxSide);
+        return{x:450+(dir*side*spacing),y:405};
       }
       const k=pos-baseCount;
-      if(k%2===1){ const idx=Math.ceil(k/2); return {x:235,y:355-(idx-1)*82}; }
-      const idx=k/2; return {x:665,y:355-(idx-1)*82};
+      const internal=yes(table.U_CADEIRAS_INTERNAS);
+      if(internal){
+        // 7.3.13: a cada nível, lado externo direito/esquerdo e depois interno direito/esquerdo.
+        const level=Math.floor((k-1)/4),slot=(k-1)%4;
+        const xs=[665,235,595,305];
+        return{x:xs[slot],y:350-level*78};
+      }
+      // Sem cadeiras internas: alterna direita/esquerda e sobe pelos braços.
+      const level=Math.floor((k-1)/2),right=((k-1)%2===0);
+      return{x:right?665:235,y:350-level*78};
     }
     const heads=yes(table.CABECEIRAS);
-    let side=total-(heads?2:0), top=Math.ceil(side/2), bottom=Math.floor(side/2);
+    let side=total-(heads?2:0),top=Math.ceil(side/2),bottom=Math.floor(side/2);
     const code=String(seatCode||'');
-    if(code==='L') return {x:160,y:250};
-    if(code==='R') return {x:740,y:250};
-    if(code.startsWith('T')){ const i=num(code.slice(1)); return {x:260+(top<=1?0:i*(380/(top-1))),y:135}; }
-    if(code.startsWith('B')){ const i=num(code.slice(1)); return {x:260+(bottom<=1?0:i*(380/(bottom-1))),y:365}; }
-    return {x:450,y:90};
+    if(code==='L')return{x:160,y:250};
+    if(code==='R')return{x:740,y:250};
+    if(code.startsWith('T')){const i=num(code.slice(1));return{x:260+(top<=1?0:i*(380/(top-1))),y:135};}
+    if(code.startsWith('B')){const i=num(code.slice(1));return{x:260+(bottom<=1?0:i*(380/(bottom-1))),y:365};}
+    return{x:450,y:90};
   }
 
   function renderSeating(container,table,guests){
@@ -410,15 +450,40 @@ tr:hover td{background:#fbfdff}
     });
   }
 
-  window.SGCES_UI={$, $$, esc, yes, num, fmtDate, fmtTime, normalize, byPrecedence, displayName, tableName, driveImage, toast, setBusy, modal, badgeStatus, renderFloor, renderSeating, seatCoordinates};
+  function enablePanZoom(wrap,floor){
+    if(!wrap||!floor)return null;
+    let scale=1,tx=0,ty=0,pan=null;
+    const apply=()=>{floor.style.transform=`translate(${tx}px,${ty}px) scale(${scale})`;};
+    const zoomBy=factor=>{
+      scale=Math.max(1,Math.min(3.5,scale*factor));
+      if(scale===1){tx=0;ty=0;}
+      apply();
+    };
+    const reset=()=>{scale=1;tx=0;ty=0;apply();};
+    wrap.addEventListener('pointerdown',e=>{
+      if(e.target.closest('.floor-table')||e.target.closest('.floor-zoom-controls'))return;
+      pan={x:e.clientX,y:e.clientY,tx,ty};
+      try{wrap.setPointerCapture(e.pointerId);}catch(err){}
+      wrap.style.cursor='grabbing';
+    });
+    wrap.addEventListener('pointermove',e=>{
+      if(!pan||scale<=1)return;
+      tx=pan.tx+(e.clientX-pan.x);ty=pan.ty+(e.clientY-pan.y);apply();
+    });
+    const end=()=>{pan=null;wrap.style.cursor='';};
+    wrap.addEventListener('pointerup',end);wrap.addEventListener('pointercancel',end);
+    return{zoomIn:()=>zoomBy(1.2),zoomOut:()=>zoomBy(1/1.2),reset,getScale:()=>scale};
+  }
+
+  window.SGCES_UI={$, $$, esc, yes, num, fmtDate, fmtTime, normalize, byPrecedence, displayName, tableName, driveImage, toast, setBusy, modal, badgeStatus, renderFloor, renderSeating, seatCoordinates, enablePanZoom};
 })();
 
 </script>
 <script>
 (function(){
-  const U=SGCES_UI,A=SGCES_API;let data=null;const eventId=(new URLSearchParams(location.search).get('evento')||'').trim();
-  document.addEventListener('DOMContentLoaded',()=>{tick();setInterval(tick,1000);load();setInterval(load,SGCES_CONFIG.POLL_TV_MS||10000);});
-  async function load(){try{data=await A.call('tvData',{eventId});render();}catch(e){console.error(e);}}
+  const U=SGCES_UI,A=SGCES_API;let data=null,loading=false;const eventId=(new URLSearchParams(location.search).get('evento')||'').trim();
+  document.addEventListener('DOMContentLoaded',()=>{tick();setInterval(tick,1000);load();setInterval(()=>{if(!document.hidden)load();},Math.max(10000,Number(SGCES_CONFIG.POLL_TV_MS||10000)));document.addEventListener('visibilitychange',()=>{if(!document.hidden)load();});});
+  async function load(){if(loading)return;loading=true;try{data=await A.call('tvData',{eventId},55000);render();}catch(e){console.error(e);}finally{loading=false;}}
   function tick(){U.$('#clock').textContent=new Intl.DateTimeFormat('pt-BR',{dateStyle:'short',timeStyle:'medium'}).format(new Date());}
   function render(){if(!data)return;const e=data.event||{},s=data.stats||{};U.$('#tvTitle').textContent=e.NOME||'SGCES';if(e.BANNER_URL){U.$('.tv-header').style.backgroundImage=`linear-gradient(rgba(16,45,82,.84),rgba(16,45,82,.84)),url("${U.driveImage(e.BANNER_URL).replace(/"/g,'%22')}")`;U.$('.tv-header').style.backgroundSize='cover';U.$('.tv-header').style.backgroundPosition='center';}U.$('#tvSub').textContent=[U.fmtDate(e.DATA),U.fmtTime(e.HORARIO),e.LOCAL].filter(Boolean).join(' • ');U.$('#tvStats').textContent=`Presentes: ${U.num(s.present)} / ${U.num(s.totalGuests)} • Vagas: ${U.num(s.freeSeats)}`;U.renderFloor(U.$('#tvFloor'),data.tables||[],{tv:true,backgroundUrl:e.CROQUI_URL});U.$('#arrivals').innerHTML=(data.latest||[]).length?(data.latest||[]).map(x=>`<div class="tv-arrival"><span><strong>${U.esc([x.POSTO_GRAD,x.NOME].filter(Boolean).join(' '))}</strong></span><span>${U.fmtTime(x.HORARIO_CHECKIN)}</span></div>`).join(''):'<p class="muted">Aguardando confirmações de presença.</p>';U.$('#tvSponsors').innerHTML=(data.sponsors||[]).map(s=>`${s.URL_SITE?`<a href="${U.esc(s.URL_SITE)}">`:'<span>'}<img src="${U.esc(U.driveImage(s.LOGO_URL))}" alt="${U.esc(s.NOME)}">${s.URL_SITE?'</a>':'</span>'}`).join('');}
 })();
