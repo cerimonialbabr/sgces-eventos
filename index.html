@@ -36,7 +36,7 @@ img{max-width:100%;display:block}
 .app-shell{min-height:100vh;display:grid;grid-template-columns:260px 1fr}
 .sidebar{background:#102d52;color:#fff;padding:22px 16px;position:sticky;top:0;height:100vh;overflow:auto}
 .brand{padding:6px 10px 22px;border-bottom:1px solid rgba(255,255,255,.14);margin-bottom:16px}
-.brand-logo{display:block;width:100%;max-width:210px;height:auto;object-fit:contain;margin:0 0 8px}
+.brand h1{font-size:2.05rem;line-height:1.05;margin:0 0 7px;font-weight:800;letter-spacing:.02em}
 .brand p{margin:0;color:#cdd9e8;font-size:.82rem;line-height:1.35}
 .nav{display:grid;gap:5px}
 .nav button{width:100%;border:0;border-radius:10px;background:transparent;color:#d9e6f4;text-align:left;padding:11px 12px;font-weight:600}
@@ -135,7 +135,7 @@ tr:hover td{background:#fbfdff}
 .table-shape.rect{width:470px;height:150px;border-radius:8px}
 .table-shape.u{width:410px;height:250px;border:20px solid #64748b;border-top:0;background:transparent;border-radius:0 0 12px 12px}
 .seat{position:absolute;transform:translate(-50%,-50%);width:46px;height:132px;border:1px solid #cbd5e1;background:#fff;border-radius:9px;padding:0;text-align:center;font-size:.74rem;box-shadow:0 3px 9px rgba(15,23,42,.06);display:flex;align-items:center;justify-content:center;overflow:visible}
-.seat .seat-vertical{white-space:nowrap;transform:rotate(-90deg);transform-origin:center;font-weight:800;font-size:.74rem;line-height:1}
+.seat .seat-vertical{white-space:nowrap;transform:rotate(-90deg);transform-origin:center;font-weight:800;font-size:.74rem;line-height:1}.seat.empty{opacity:.32;background:#f8fafc;border-style:dashed;box-shadow:none}
 .overview-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(470px,1fr));gap:14px}
 .overview-card{border:1px solid var(--line);border-radius:14px;padding:12px;background:#fff}
 .overview-stage{height:285px;overflow:hidden;border:1px solid var(--line);border-radius:12px;background:#fbfdff;margin-top:10px}
@@ -205,7 +205,7 @@ tr:hover td{background:#fbfdff}
   .sidebar{position:relative;height:auto;padding:14px}
   .nav{grid-template-columns:repeat(4,minmax(0,1fr));overflow:auto}
   .nav button{text-align:center;font-size:.8rem;padding:9px 7px}
-  .brand{padding:3px 5px 14px}.brand-logo{max-width:190px}
+  .brand{padding:3px 5px 14px}.brand h1{font-size:1.65rem}
   .topbar{position:relative;padding:10px 14px;align-items:flex-start;flex-direction:column}
   .content{padding:16px}
   .page-heading h2{font-size:1.9rem}
@@ -229,7 +229,7 @@ tr:hover td{background:#fbfdff}
 <div class="app-shell">
   <aside class="sidebar">
     <div class="brand">
-      <img class="brand-logo" src="icone_sgces.png" alt="SGCES">
+      <h1>SGCES</h1>
       <p>Sistema de Gerenciamento de Cerimonial em Eventos Sociais</p>
     </div>
     <nav class="nav" id="mainNav">
@@ -243,7 +243,7 @@ tr:hover td{background:#fbfdff}
       <button data-view="conteudos">Conteúdos</button>
       <button data-view="acessos">Acessos</button>
     </nav>
-    <div class="sidebar-footer">SGCES v1.4.1</div>
+    <div class="sidebar-footer">SGCES v1.4.3</div>
   </aside>
 
   <main class="main">
@@ -490,7 +490,7 @@ tr:hover td{background:#fbfdff}
     const bg=String(opts.backgroundUrl||'').trim();
     if(bg){
       container.style.backgroundImage=`url("${driveImage(bg).replace(/"/g,'%22')}")`;
-      container.style.backgroundSize='cover';
+      container.style.backgroundSize='contain';
       container.style.backgroundPosition='center';
       container.style.backgroundRepeat='no-repeat';
     }else{
@@ -527,6 +527,20 @@ tr:hover td{background:#fbfdff}
       if(opts.onClick)el.addEventListener('click',ev=>{if(locked)return;opts.onClick(t,el,ev);});
       container.appendChild(el);
     });
+  }
+
+  function seatCodesForTable(table,total){
+    const format=String(table.FORMATO||'REDONDA').toUpperCase();
+    total=Math.max(1,total||num(table.CAPACIDADE,8));
+    if(format==='REDONDA') return Array.from({length:total},(_,i)=>'R'+i);
+    if(format==='U') return Array.from({length:total},(_,i)=>'U'+(i+1));
+    const heads=yes(table.CABECEIRAS);
+    let side=total-(heads?2:0),top=Math.ceil(side/2),bottom=Math.floor(side/2),codes=[];
+    for(let i=0;i<top;i++)codes.push('T'+i);
+    if(heads)codes.push('R');
+    for(let i=0;i<bottom;i++)codes.push('B'+i);
+    if(heads)codes.push('L');
+    return codes;
   }
 
   function seatCoordinates(table, seatCode, total){
@@ -574,10 +588,32 @@ tr:hover td{background:#fbfdff}
     container.innerHTML='<div class="seating-canvas"></div>';
     const canvas=container.firstElementChild;
     const format=String(table.FORMATO||'REDONDA').toUpperCase();
-    const shape=document.createElement('div'); shape.className='table-shape '+(format==='RETANGULAR'?'rect':format==='U'?'u':'round'); canvas.appendChild(shape);
-    (guests||[]).filter(g=>g.ASSENTO).forEach(g=>{
-      const p=seatCoordinates(table,g.ASSENTO,Math.max(2,(guests||[]).length));
-      const s=document.createElement('div'); s.className='seat'; s.style.left=p.x+'px'; s.style.top=p.y+'px';
+    const shape=document.createElement('div');
+    shape.className='table-shape '+(format==='RETANGULAR'?'rect':format==='U'?'u':'round');
+    canvas.appendChild(shape);
+    const explicitSeats=(guests||[]).map(g=>String(g.ASSENTO||'')).filter(Boolean);
+    const detectedTotal=explicitSeats.reduce((mx,code)=>{
+      if(/^R\d+$/.test(code)) return Math.max(mx,parseInt(code.slice(1),10)+1);
+      if(/^U\d+$/.test(code)) return Math.max(mx,parseInt(code.slice(1),10));
+      if(/^[TB]\d+$/.test(code)) return Math.max(mx,U.num(table.CAPACIDADE,0));
+      return mx;
+    },0);
+    const total=Math.max(1,U.num(table.CAPACIDADE,0),detectedTotal,(guests||[]).length||0);
+    const assigned={};
+    (guests||[]).filter(g=>g.ASSENTO).forEach(g=>{assigned[String(g.ASSENTO)]=g;});
+    seatCodesForTable(table,total).forEach(code=>{
+      const g=assigned[code];
+      const p=seatCoordinates(table,code,total);
+      const s=document.createElement('div');
+      s.className='seat'+(g?'':' empty');
+      s.style.left=p.x+'px';
+      s.style.top=p.y+'px';
+      if(!g){
+        s.title='Assento livre';
+        s.innerHTML='<div class="seat-vertical" style="width:108px;font-size:.68rem;color:#94a3b8">LIVRE</div>';
+        canvas.appendChild(s);
+        return;
+      }
       const nome=[g.POSTO_GRAD,g.NOME_GUERRA||g.NOME_COMPLETO].filter(Boolean).join(' ');
       s.title=[nome,g.CARGO,g.NOME_COMPLETO].filter(Boolean).join(' • ');
       const cardH=Math.max(122,Math.min(190,56+nome.length*5.2));
@@ -592,8 +628,8 @@ tr:hover td{background:#fbfdff}
     let scale=1,tx=0,ty=0,pan=null;
     const apply=()=>{floor.style.transform=`translate(${tx}px,${ty}px) scale(${scale})`;};
     const zoomBy=factor=>{
-      scale=Math.max(1,Math.min(3.5,scale*factor));
-      if(scale===1){tx=0;ty=0;}
+      scale=Math.max(0.35,Math.min(4,scale*factor));
+      if(Math.abs(scale-1)<0.001){scale=1;tx=0;ty=0;}
       apply();
     };
     const reset=()=>{scale=1;tx=0;ty=0;apply();};
@@ -604,7 +640,7 @@ tr:hover td{background:#fbfdff}
       wrap.style.cursor='grabbing';
     });
     wrap.addEventListener('pointermove',e=>{
-      if(!pan||scale<=1)return;
+      if(!pan||Math.abs(scale-1)<0.001)return;
       tx=pan.tx+(e.clientX-pan.x);ty=pan.ty+(e.clientY-pan.y);apply();
     });
     const end=()=>{pan=null;wrap.style.cursor='';};
@@ -612,14 +648,14 @@ tr:hover td{background:#fbfdff}
     return{zoomIn:()=>zoomBy(1.2),zoomOut:()=>zoomBy(1/1.2),reset,getScale:()=>scale};
   }
 
-  window.SGCES_UI={$, $$, esc, yes, num, fmtDate, fmtTime, dateInputValue, timeInputValue, normalize, byPrecedence, displayName, tableName, driveImage, toast, setBusy, modal, badgeStatus, renderFloor, renderSeating, seatCoordinates, enablePanZoom};
+  window.SGCES_UI={$, $$, esc, yes, num, fmtDate, fmtTime, dateInputValue, timeInputValue, normalize, byPrecedence, displayName, tableName, driveImage, toast, setBusy, modal, badgeStatus, renderFloor, renderSeating, seatCodesForTable, seatCoordinates, enablePanZoom};
 })();
 
 </script>
 <script>
 (function(){
   const U=window.SGCES_UI, A=window.SGCES_API;
-  const state={events:[],eventId:'',activeEventId:'',postos:[],openEventCount:0,maxOpenEvents:10,data:{event:null,guests:[],tables:[],contents:[],sponsors:[],stats:{}},view:'dashboard',selectedCerimonialTable:'',cerimonialMode:'individual'};
+  const state={events:[],eventId:'',activeEventId:'',postos:[],openEventCount:0,maxOpenEvents:10,data:{event:null,guests:[],tables:[],contents:[],sponsors:[],stats:{}},view:'dashboard',selectedCerimonialTable:''};
 
   document.addEventListener('DOMContentLoaded',init);
 
@@ -1200,27 +1236,34 @@ tr:hover td{background:#fbfdff}
     });
   }
 
+  function directionToPrincipal(table){
+    const principal=(state.data.tables||[]).find(x=>U.yes(x.PRINCIPAL));
+    if(!principal||String(principal.ID_MESA)===String(table.ID_MESA)) return '';
+    const dx=U.num(principal.X)-U.num(table.X),dy=U.num(principal.Y)-U.num(table.Y);
+    const ang=Math.atan2(dy,dx)*180/Math.PI;
+    if(ang>=-22.5&&ang<22.5) return '→';
+    if(ang>=22.5&&ang<67.5) return '↘';
+    if(ang>=67.5&&ang<112.5) return '↓';
+    if(ang>=112.5&&ang<157.5) return '↙';
+    if(ang>=157.5||ang<-157.5) return '←';
+    if(ang>=-157.5&&ang<-112.5) return '↖';
+    if(ang>=-112.5&&ang<-67.5) return '↑';
+    return '↗';
+  }
+
   function renderCerimonial(){
     const c=U.$('[data-section="cerimonial"]');if(requireEvent(c,'Cerimonial'))return;
     const allTables=state.data.tables||[],tables=allTables.filter(t=>U.yes(t.USA_ICA));
-    const mode=state.cerimonialMode||'individual';
-    const switcher=`<button class="btn ${mode==='individual'?'btn-soft':''}" data-mode-ind>Mesa individual</button><button class="btn ${mode==='overview'?'btn-soft':''}" data-mode-all>Visão geral dos prismas</button>`;
-    if(mode==='overview'){
-      c.innerHTML=heading('Cerimonial','',switcher)+`<div class="card"><div style="display:flex;align-items:center;gap:10px"><span class="spinner"></span><span class="muted">Carregando mesas...</span></div></div>`;
-      c.querySelector('[data-mode-ind]').onclick=()=>{state.cerimonialMode='individual';renderCerimonial();};
-      c.querySelector('[data-mode-all]').onclick=()=>{};
-      loadSeatingOverview(c);
-      return;
-    }
     if(!state.selectedCerimonialTable&&tables.length)state.selectedCerimonialTable=tables[0].ID_MESA;
-    const t=tableById(state.selectedCerimonialTable),seated=t?(state.data.guests||[]).filter(g=>String(g.MESA_ID)===String(t.ID_MESA)&&U.normalize(g.RSVP)!=='nao comparecera'):[];
-    c.innerHTML=heading('Cerimonial','',switcher+(t?`<button class="btn" data-clear>Limpar assentos</button><button class="btn btn-primary" data-compose>Compor pela ICA</button>`:''))+`
+    const t=tableById(state.selectedCerimonialTable),seated=t?(state.data.guests||[]).filter(g=>String(g.MESA_ID)===String(t.ID_MESA)&&U.normalize(g.RSVP)!=='nao comparecera').sort(U.byPrecedence):[];
+    const mainDir=t?directionToPrincipal(t):'';
+    const major=seated.find(g=>U.normalize(g.NIVEL)==='autoridade')||seated[0]||null;
+    const info=t&&!U.yes(t.PRINCIPAL)&&major?`<div class="small" style="margin-top:8px"><strong>Maior precedência:</strong> ${U.esc([major.POSTO_GRAD,major.NOME_GUERRA||major.NOME_COMPLETO].filter(Boolean).join(' '))}${mainDir?` • Mesa principal ${U.esc(mainDir)}`:''}</div>`:'';
+    c.innerHTML=heading('Cerimonial','',t?`<button class="btn" data-clear>Limpar assentos</button><button class="btn btn-primary" data-compose>Compor pela ICA</button>`:'')+`
       <div class="grid grid-2" style="grid-template-columns:280px 1fr">
         <div class="card"><h3>Mesas com ICA</h3>${tables.length?tables.map(x=>`<button class="btn ${String(x.ID_MESA)===String(state.selectedCerimonialTable)?'btn-soft':''}" style="width:100%;margin-bottom:7px;justify-content:flex-start;white-space:normal;text-align:left" data-ct="${U.esc(x.ID_MESA)}">${U.esc(x.NOME)} • ${U.esc(x.FORMATO)}</button>`).join(''):'<p class="muted">Nenhuma mesa com ICA.</p>'}</div>
-        <div class="card">${t?`<div class="section-actions"><div><h3 style="margin:0">${U.esc(t.NOME)}</h3><div class="small muted">${seated.length}/${U.num(t.CAPACIDADE)} pessoas</div></div><button class="btn btn-sm" data-edit-table>Editar mesa</button></div><div class="seating-stage" id="seatingStage"></div>`:'<p class="muted">Selecione uma mesa.</p>'}</div>
+        <div class="card">${t?`<div class="section-actions"><div><h3 style="margin:0">${U.esc(t.NOME)}</h3><div class="small muted">${seated.length}/${U.num(t.CAPACIDADE)} pessoas</div>${info}</div><button class="btn btn-sm" data-edit-table>Editar mesa</button></div><div class="seating-stage" id="seatingStage"></div>`:'<p class="muted">Selecione uma mesa.</p>'}</div>
       </div>`;
-    c.querySelector('[data-mode-ind]').onclick=()=>{};
-    c.querySelector('[data-mode-all]').onclick=()=>{state.cerimonialMode='overview';renderCerimonial();};
     c.querySelectorAll('[data-ct]').forEach(b=>b.onclick=()=>{state.selectedCerimonialTable=b.dataset.ct;renderCerimonial();});
     if(t){
       U.renderSeating(U.$('#seatingStage',c),t,seated);
@@ -1228,42 +1271,6 @@ tr:hover td{background:#fbfdff}
       c.querySelector('[data-compose]').onclick=()=>runBusy(async()=>{await A.call('composeTable',{tableId:t.ID_MESA},65000);await loadEvent();renderCerimonial();U.toast('Mesa composta.','success');});
       c.querySelector('[data-clear]').onclick=()=>runBusy(async()=>{await A.call('clearTableSeats',{tableId:t.ID_MESA},55000);await loadEvent();renderCerimonial();});
     }
-  }
-
-
-  async function loadSeatingOverview(container){
-    try{
-      const data=await A.call('seatingOverview',{eventId:state.eventId},65000);
-      if(state.view!=='cerimonial'||state.cerimonialMode!=='overview'||!document.body.contains(container))return;
-      drawSeatingOverview(container,data);
-    }catch(err){
-      container.innerHTML=heading('Cerimonial','',`<button class="btn" data-back-ind>Mesa individual</button>`)+`<div class="card"><p class="danger-text">${U.esc(err.message||String(err))}</p></div>`;
-      const b=container.querySelector('[data-back-ind]');if(b)b.onclick=()=>{state.cerimonialMode='individual';renderCerimonial();};
-    }
-  }
-
-  function drawSeatingOverview(c,data){
-    const groups=data.groups||[],principal=data.principal;
-    const cards=groups.map((gr,i)=>{
-      const t=gr.table||{},guests=gr.guests||[],f=gr.facingGuest||null;
-      const oriented=!U.yes(t.PRINCIPAL)&&f;
-      const noSeats=guests.some(g=>!String(g.ASSENTO||'').trim());
-      return `<div class="overview-card" data-ov="${i}">
-        <div class="section-actions"><div><h3 style="margin:0">${U.esc(t.NOME||'Mesa')}</h3>
-          <div class="overview-meta"><span class="small muted">${guests.length}/${U.num(t.CAPACIDADE)}</span>${U.yes(t.PRINCIPAL)?'<span class="badge info">MESA PRINCIPAL</span>':(gr.directionToPrincipal?`<span class="badge">Mesa principal ${U.esc(gr.directionToPrincipal)}</span>`:'')}</div>
-        </div></div>
-        ${oriented?`<div class="small" style="margin-top:7px"><strong>Maior precedência:</strong> ${U.esc([f.POSTO_GRAD,f.NOME_GUERRA||f.NOME_COMPLETO].filter(Boolean).join(' '))}${f.ASSENTO?` • ${U.esc(f.ASSENTO)}`:''}</div>`:''}
-        ${guests.length&&!noSeats?`<div class="overview-stage" id="ovStage${i}"></div>`:
-          (guests.length?`<div class="small muted" style="margin-top:10px">Posições ainda não compostas.</div><div class="small" style="margin-top:6px">${guests.map(g=>U.esc([g.POSTO_GRAD,g.NOME_GUERRA||g.NOME_COMPLETO].filter(Boolean).join(' '))).join('<br>')}</div>`:'<div class="small muted" style="margin-top:10px">Mesa vazia.</div>')}
-      </div>`;
-    }).join('');
-    const switcher=`<button class="btn" data-mode-ind>Mesa individual</button><button class="btn btn-soft" data-mode-all>Visão geral dos prismas</button>`;
-    c.innerHTML=heading('Cerimonial','',switcher)+`${principal?`<div class="card" style="margin-bottom:14px"><strong>Mesa principal:</strong> ${U.esc(principal.NOME||'')}</div>`:''}<div class="overview-grid">${cards||'<div class="card">Nenhuma mesa.</div>'}</div>`;
-    c.querySelector('[data-mode-ind]').onclick=()=>{state.cerimonialMode='individual';renderCerimonial();};
-    groups.forEach((gr,i)=>{
-      const stage=U.$('#ovStage'+i,c);
-      if(stage)U.renderSeating(stage,gr.table,gr.guests||[]);
-    });
   }
 
   function renderNominata(){
@@ -1290,7 +1297,7 @@ tr:hover td{background:#fbfdff}
         ${items.length?`<div style="display:grid;gap:8px;margin-top:12px">${items.map(it=>{
           if(it.TIPO_ITEM==='MENSAGEM'){
             const ref=selected.find(g=>String(g.ID_CONVIDADO)===String(it.ANCHOR_REF));
-            return `<div class="nom-item message"><div class="section-actions"><div><strong>${U.esc(String(it.TEXTO||'').toUpperCase())}</strong><div class="small muted" style="margin-top:5px">${ref?U.esc((it.ANCHOR_SIDE==='ANTES'?'Antes de ':'Depois de ')+nominataText(ref)):'Ao final da Nominata'}</div></div><div class="actions"><button class="btn btn-sm" data-edit-msg="${U.esc(it.ID_ITEM)}">Editar</button><button class="btn btn-sm btn-danger" data-del-msg="${U.esc(it.ID_ITEM)}">Excluir</button></div></div></div>`;
+            return `<div class="nom-item message"><div class="section-actions"><div><strong>${U.esc(String(it.TEXTO||'').toUpperCase())}</strong></div><div class="actions"><button class="btn btn-sm" data-edit-msg="${U.esc(it.ID_ITEM)}">Editar</button><button class="btn btn-sm btn-danger" data-del-msg="${U.esc(it.ID_ITEM)}">Excluir</button></div></div></div>`;
           }
           const g=it.GUEST||{};
           const presente=String(g.CHECKIN||'').toUpperCase()==='PRESENTE';
