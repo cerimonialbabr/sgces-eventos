@@ -62,7 +62,7 @@ img{max-width:100%;display:block}
 .stat strong{display:block;font-size:1.6rem;margin-top:3px}
 .stat span{font-size:.78rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em}
 
-.btn{border:1px solid var(--line);background:#fff;color:var(--text);padding:9px 13px;border-radius:10px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;gap:7px}
+.btn{border:1px solid var(--line);background:#fff;color:var(--text);padding:9px 13px;border-radius:10px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;gap:7px;white-space:normal;text-align:center;line-height:1.15;min-height:38px}
 .btn:hover{filter:brightness(.98)}
 .btn-primary{background:var(--primary);border-color:var(--primary);color:#fff}
 .btn-soft{background:var(--soft);border-color:#cbdaf0;color:var(--primary)}
@@ -79,7 +79,7 @@ img{max-width:100%;display:block}
 .field input,.field select,.field textarea,.search-input{width:100%;border:1px solid #cfd7e3;border-radius:10px;padding:10px 11px;background:#fff;color:var(--text);outline:none}
 .field textarea{min-height:90px;resize:vertical}
 .field input:focus,.field select:focus,.field textarea:focus,.search-input:focus{border-color:#759aca;box-shadow:0 0 0 3px rgba(39,92,159,.11)}
-.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:flex-end}
 .section-actions{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
 
 .table-wrap{overflow:auto;border:1px solid var(--line);border-radius:12px;background:#fff}
@@ -138,6 +138,10 @@ tr:hover td{background:#fbfdff}
 .photo-preview img{width:100%;height:100%;object-fit:cover}
 .nominata-editor{display:block}
 .nom-item{border:1px solid var(--line);border-radius:11px;padding:11px 12px;background:#fff}
+.nom-item .section-actions{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,360px);gap:14px;align-items:center;margin-bottom:0}
+.nom-item .actions{width:100%;justify-content:flex-end}
+.upload-frame{display:block;width:100%;height:76px;border:0;background:transparent;overflow:hidden}
+.photo-upload-box>div:last-child{min-width:0;flex:1}
 .nom-item.message{background:#f8fafc;border-style:dashed}
 @media(max-width:900px){.nominata-editor{grid-template-columns:1fr}}
 
@@ -198,6 +202,7 @@ tr:hover td{background:#fbfdff}
   .grid-2,.grid-3,.grid-4,.form-grid,.form-grid-3{grid-template-columns:1fr}
   .stats{grid-template-columns:repeat(2,1fr)}
   .person-card{grid-template-columns:62px 1fr}.person-card .actions{grid-column:1/-1}
+  .nom-item .section-actions{grid-template-columns:1fr}.nom-item .actions{justify-content:flex-start}.upload-frame{height:116px}
   .avatar{width:62px;height:62px}
   .tv-grid{grid-template-columns:1fr}.tv-page{display:block}.tv-panel{margin-bottom:12px}
   .content-links{grid-template-columns:1fr}
@@ -228,7 +233,7 @@ tr:hover td{background:#fbfdff}
       <button data-view="conteudos">Conteúdos</button>
       <button data-view="acessos">Acessos</button>
     </nav>
-    <div class="sidebar-footer">SGCES v1.3.1</div>
+    <div class="sidebar-footer">SGCES v1.3.2</div>
   </aside>
 
   <main class="main">
@@ -361,7 +366,14 @@ tr:hover td{background:#fbfdff}
     });
   }
 
-  window.SGCES_API = { call, callBridge, readyApi };
+  function uploaderUrl(kind,targetId){
+    if(!readyApi()) return '';
+    const qs=new URLSearchParams();
+    qs.set('uploader','1');qs.set('kind',String(kind||''));qs.set('targetId',String(targetId||''));qs.set('origin',location.origin);qs.set('_',Date.now());
+    return window.SGCES_CONFIG.API_URL+(window.SGCES_CONFIG.API_URL.includes('?')?'&':'?')+qs.toString();
+  }
+
+  window.SGCES_API = { call, callBridge, uploaderUrl, readyApi };
 })();
 
 </script>
@@ -532,13 +544,37 @@ tr:hover td{background:#fbfdff}
 <script>
 (function(){
   const U=window.SGCES_UI, A=window.SGCES_API;
-  const state={events:[],eventId:'',activeEventId:'',data:{event:null,guests:[],tables:[],contents:[],sponsors:[],stats:{}},view:'dashboard',selectedCerimonialTable:''};
+  const state={events:[],eventId:'',activeEventId:'',postos:[],data:{event:null,guests:[],tables:[],contents:[],sponsors:[],stats:{}},view:'dashboard',selectedCerimonialTable:''};
 
   document.addEventListener('DOMContentLoaded',init);
 
   async function init(){
     bindShell();
+    bindUploadMessages();
     await bootstrap();
+  }
+
+  function bindUploadMessages(){
+    window.addEventListener('message',async ev=>{
+      const m=ev.data||{};
+      if(m.type==='SGCES_UPLOAD_ERROR'){
+        U.toast(m.error||'Falha no upload.','error');
+        return;
+      }
+      if(m.type!=='SGCES_UPLOAD_DONE')return;
+      try{
+        if(m.kind==='FOTO'){
+          const preview=U.$('#gPhotoPreview');
+          if(preview && m.data && m.data.url) preview.innerHTML=`<img src="${U.esc(U.driveImage(m.data.url))}" alt="Foto">`;
+          await loadEvent();
+          U.toast('Foto enviada para o Google Drive.','success');
+        }else if(m.kind==='CROQUI'){
+          await loadEvent();
+          if(state.view==='croqui')renderCroqui();
+          U.toast('Imagem do croqui enviada para o Google Drive.','success');
+        }
+      }catch(err){U.toast(err.message||String(err),'error');}
+    });
   }
 
   function bindShell(){
@@ -567,6 +603,7 @@ tr:hover td{background:#fbfdff}
       const b=await A.call('bootstrap',{eventId:state.eventId||remembered});
       state.events=b.events||[];
       state.activeEventId=b.activeEventId||'';
+      state.postos=b.postos||[];
       const valid=id=>id&&state.events.some(e=>String(e.ID_EVENTO)===String(id));
       state.eventId=valid(state.eventId)?state.eventId:(valid(remembered)?remembered:(b.selectedEventId||state.activeEventId||''));
       try{ localStorage.setItem('sgces_selected_event',state.eventId||''); }catch(err){}
@@ -580,6 +617,7 @@ tr:hover td{background:#fbfdff}
       const b=await A.call('bootstrap',{eventId:state.eventId});
       state.events=b.events||[];
       state.activeEventId=b.activeEventId||'';
+      state.postos=b.postos||state.postos||[];
       if(!state.eventId) state.eventId=b.selectedEventId||state.activeEventId||'';
       fillEventSelect();
       if(state.eventId) await loadEvent(); else renderAll();
@@ -757,7 +795,7 @@ tr:hover td{background:#fbfdff}
     const photoSrc=U.driveImage(g.FOTO_URL||'');
     const m=U.modal(g.ID_CONVIDADO?'Editar convidado':'Adicionar convidado',`
       <div class="form-grid-3">
-        ${field('Posto / Graduação','gPosto',g.POSTO_GRAD)}
+        <div class="field"><label>Posto / Graduação</label><input id="gPosto" list="sgcesPostos" value="${U.esc(g.POSTO_GRAD||'')}"><datalist id="sgcesPostos">${(state.postos||[]).map(p=>`<option value="${U.esc(p.POSTO_ABREVIADO||'')}">${U.esc(p.POSTO_EXTENSO||'')}</option>`).join('')}</datalist></div>
         <div class="field" style="grid-column:span 2"><label>Nome completo</label><input id="gNome" value="${U.esc(g.NOME_COMPLETO||'')}"></div>
         ${field('Nome de guerra','gGuerra',g.NOME_GUERRA)}${field('Cargo','gCargo',g.CARGO)}${field('OM / Órgão','gOm',g.OM_ORGAO)}
         ${selectField('Sexo','gSexo',['','MASCULINO','FEMININO'],g.SEXO||'')}${field('Vocativo','gVoc',g.VOCATIVO)}${field('E-mail','gEmail',g.EMAIL,'email')}
@@ -771,7 +809,7 @@ tr:hover td{background:#fbfdff}
         <div class="field" style="grid-column:1/-1"><label>Foto para identificação</label>
           <div class="photo-upload-box">
             <div class="photo-preview" id="gPhotoPreview">${photoSrc?`<img src="${U.esc(photoSrc)}" alt="Foto">`:'SEM FOTO'}</div>
-            <div><input id="gPhotoFile" type="file" accept="image/*"><div class="small muted" style="margin-top:6px">A foto será enviada para a pasta SGCES - Arquivos/FOTOS e o endereço será gravado automaticamente no cadastro da pessoa.</div></div>
+            <div id="gPhotoUploadArea">${g.ID_CONVIDADO?`<iframe class="upload-frame" title="Enviar foto" src="${U.esc(A.uploaderUrl('foto',g.ID_CONVIDADO))}"></iframe><div class="small muted">O arquivo é enviado diretamente pelo Apps Script para <strong>SGCES - Arquivos/FOTOS</strong>, sem passar pelo GitHub.</div>`:`<div class="small muted" style="padding:10px 0">Salve o convidado para habilitar o envio da foto nesta mesma janela.</div>`}</div>
           </div>
         </div>
         ${!g.ID_CONVIDADO?'<div class="field" style="grid-column:span 2"><label>Acompanhante (opcional)</label><input id="gAcomp" placeholder="Nome completo do acompanhante"></div><div class="field"><label>Sexo acompanhante</label><select id="gAcompSexo"><option></option><option>MASCULINO</option><option>FEMININO</option></select></div>':''}
@@ -780,12 +818,6 @@ tr:hover td{background:#fbfdff}
 
     const place=U.$('#gPlace',m),anchor=U.$('#gAnchor',m);
     place.onchange=()=>{anchor.disabled=!['ANTES','DEPOIS'].includes(place.value); if(anchor.disabled)anchor.value='';};
-    const photoInput=U.$('#gPhotoFile',m);
-    photoInput.onchange=()=>{
-      const f=photoInput.files[0]; if(!f)return;
-      const url=URL.createObjectURL(f); U.$('#gPhotoPreview',m).innerHTML=`<img src="${U.esc(url)}" alt="Prévia">`;
-    };
-
     m.querySelector('[data-save]').onclick=async ev=>{
       const btn=ev.currentTarget;U.setBusy(btn,true);
       try{
@@ -799,13 +831,16 @@ tr:hover td{background:#fbfdff}
         if(!g.ID_CONVIDADO){p.acompanhanteNome=U.$('#gAcomp',m).value.trim();p.acompanhanteSexo=U.$('#gAcompSexo',m).value;}
         if(!p.nomeCompleto)throw new Error('Informe o nome completo.');
         if(['ANTES','DEPOIS'].includes(place.value) && !anchor.value)throw new Error('Escolha a pessoa de referência.');
+        const wasNew=!g.ID_CONVIDADO;
         const saved=await A.call('saveGuest',p);
-        const file=photoInput.files[0];
-        if(file){
-          const dataUrl=await optimizeImageFile(file);
-          await A.callBridge('uploadGuestPhoto',{guestId:saved.ID_CONVIDADO,fileName:file.name,dataUrl:dataUrl},90000);
+        if(wasNew){
+          g=saved;
+          const area=U.$('#gPhotoUploadArea',m);
+          if(area)area.innerHTML=`<iframe class="upload-frame" title="Enviar foto" src="${U.esc(A.uploaderUrl('foto',saved.ID_CONVIDADO))}"></iframe><div class="small muted">O arquivo é enviado diretamente pelo Apps Script para <strong>SGCES - Arquivos/FOTOS</strong>, sem passar pelo GitHub.</div>`;
+          await loadEvent();renderConvidados();U.toast('Convidado salvo. Você já pode inserir a foto nesta janela.','success');
+        }else{
+          m.remove();await loadEvent();renderConvidados();U.toast('Convidado salvo.','success');
         }
-        m.remove();await loadEvent();renderConvidados();U.toast(file?'Convidado e foto salvos.':'Convidado salvo.','success');
       }catch(err){U.toast(err.message,'error');}finally{U.setBusy(btn,false);}
     };
   }
@@ -882,10 +917,10 @@ tr:hover td{background:#fbfdff}
       <div class="card" style="margin-bottom:16px">
         <div class="section-actions">
           <div style="flex:1;min-width:280px">
-            <div class="field"><label>Imagem de fundo do croqui</label><input id="croquiFile" type="file" accept="image/png,image/jpeg,image/webp"></div>
-            <div class="small muted">Selecione uma imagem do salão. O SGCES envia uma cópia otimizada para a pasta <strong>SGCES - Arquivos</strong> no Google Drive.</div>
+            <div class="field"><label>Imagem de fundo do croqui</label><iframe class="upload-frame" title="Enviar imagem do croqui" src="${U.esc(A.uploaderUrl('croqui',state.eventId))}"></iframe></div>
+            <div class="small muted">O arquivo é enviado diretamente pelo Apps Script para <strong>SGCES - Arquivos/CROQUIS</strong>. Ao concluir, o croqui é recarregado automaticamente.</div>
           </div>
-          <div class="actions" style="align-self:flex-end"><button class="btn btn-primary" data-upload-bg>Enviar imagem</button><button class="btn" data-clear-bg>Remover imagem</button></div>
+          <div class="actions" style="align-self:flex-end"><button class="btn" data-clear-bg>Remover imagem</button></div>
         </div>
         <details style="margin-top:12px"><summary class="small" style="cursor:pointer;font-weight:700">Usar uma imagem já publicada por URL</summary><div class="section-actions" style="margin-top:10px"><div style="flex:1;min-width:280px"><div class="field"><input id="croquiUrl" value="${U.esc(e.CROQUI_URL||'')}" placeholder="URL pública ou link compartilhado do Google Drive"></div></div><button class="btn" data-save-bg>Aplicar URL</button></div></details>
         <div class="small muted" style="margin-top:10px">A mesma imagem é usada pela Organização, Recepção, Portal do Convidado e TV.</div>
@@ -893,13 +928,6 @@ tr:hover td{background:#fbfdff}
       <div class="card"><div class="floor-toolbar"><span class="muted small">Arraste as mesas. Redimensione pelo ponto azul. Mesas redondas permanecem sempre circulares, em proporção 1:1.</span></div><div class="floor-wrap"><div id="editorFloor" class="floor"></div></div></div>`;
     const floor=U.$('#editorFloor',c); U.renderFloor(floor,state.data.tables||[],{editor:true,backgroundUrl:e.CROQUI_URL}); enableFloorEditing(floor);
     c.querySelector('[data-save-layout]').onclick=()=>saveFloorLayout(floor);
-    c.querySelector('[data-upload-bg]').onclick=async ev=>{
-      const file=U.$('#croquiFile',c).files[0]; if(!file){U.toast('Selecione uma imagem.','error');return;}
-      const btn=ev.currentTarget;U.setBusy(btn,true);
-      try{await uploadCroquiImage(file,state.eventId,e.CROQUI_URL||'');await loadEvent();renderCroqui();U.toast('Imagem do croqui enviada.','success');}
-      catch(err){U.toast(err.message||String(err),'error');}
-      finally{U.setBusy(btn,false);}
-    };
     c.querySelector('[data-save-bg]').onclick=async()=>{await runBusy(async()=>{const r=await A.call('saveEvent',{ID_EVENTO:state.eventId,CROQUI_URL:U.$('#croquiUrl',c).value.trim()});state.data.event=r.event;renderCroqui();U.toast('Imagem do croqui atualizada.','success');});};
     c.querySelector('[data-clear-bg]').onclick=async()=>{await runBusy(async()=>{const r=await A.call('saveEvent',{ID_EVENTO:state.eventId,CROQUI_URL:''});state.data.event=r.event;renderCroqui();U.toast('Imagem removida.','success');});};
   }
@@ -1051,7 +1079,7 @@ tr:hover td{background:#fbfdff}
   function nominataText(g){
     g=g||{};
     const cargo=String(g.CARGO||'').trim();
-    const ident=[g.POSTO_GRAD,g.NOME_COMPLETO].filter(Boolean).join(' ').trim();
+    const ident=[g.POSTO_EXTENSO||g.POSTO_GRAD,g.NOME_COMPLETO].filter(Boolean).join(' ').trim();
     return (cargo?cargo+', '+ident:ident).toUpperCase().replace(/[.\s]+$/,'')+'.';
   }
 
