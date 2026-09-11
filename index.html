@@ -118,11 +118,15 @@ tr:hover td{background:#fbfdff}
 .floor-table{position:absolute;transform:translate(-50%,-50%);display:flex;align-items:center;justify-content:center;text-align:center;background:#eef4fb;border:2px solid #7d9fc8;color:#183b68;font-weight:800;user-select:none;touch-action:none;box-shadow:0 5px 14px rgba(15,23,42,.08);cursor:grab}
 .floor-table.round{border-radius:50%}
 .floor-table.rect{border-radius:9px}
-.floor-table.u{border-radius:10px;border-top-color:transparent;background:transparent;box-shadow:none}
+.floor-table.u{border:0!important;border-radius:0;background:transparent!important;box-shadow:none;overflow:visible;color:#183b68}
+.floor-table.u::before{content:"";position:absolute;inset:0;border:6px solid currentColor;border-top:0;border-radius:0 0 10px 10px;pointer-events:none;box-sizing:border-box}
+.floor-table.u>div{position:relative;z-index:1;background:rgba(255,255,255,.9);border-radius:8px;padding:5px 8px}
 .floor-table.dragging{cursor:grabbing;z-index:10;box-shadow:0 12px 28px rgba(15,23,42,.18)}
 .floor-table .occ{display:block;font-size:.72rem;font-weight:700;margin-top:2px;color:#52708f}
 .floor-table.highlight{outline:5px solid rgba(22,163,74,.25);background:#dcfce7 !important;border-color:#16a34a !important;color:#14532d !important}
+.floor-table.u.highlight{background:transparent!important;border-color:transparent!important;color:#16a34a!important}
 .floor-table.full{background:#fff1f2;border-color:#e11d48;color:#881337}
+.floor-table.u.full{background:transparent!important;border-color:transparent!important;color:#e11d48!important}
 .floor-table.locked{opacity:.58;cursor:not-allowed;filter:grayscale(.25)}
 .floor-table.selectable{cursor:pointer}.floor-table.selectable:hover{outline:4px solid rgba(23,63,116,.18)}
 .floor-table .resize-handle{position:absolute;right:-7px;bottom:-7px;width:17px;height:17px;border-radius:50%;background:#173f74;border:2px solid #fff;box-shadow:0 2px 5px rgba(15,23,42,.25);cursor:nwse-resize;z-index:4}
@@ -143,6 +147,37 @@ tr:hover td{background:#fbfdff}
 .seat.vertical .seat-text{white-space:nowrap;transform:rotate(-90deg);transform-origin:center;width:136px;line-height:1}
 .seat.empty{opacity:.25;background:#f8fafc;border-style:dashed;box-shadow:none}
 .seat.empty .seat-text{visibility:hidden}
+.seat.manual{cursor:grab;touch-action:manipulation;transition:box-shadow .12s,border-color .12s,opacity .12s}
+.seat.manual:hover{border-color:#6f94c3;box-shadow:0 5px 13px rgba(23,63,116,.14)}
+.seat.manual.selected{outline:3px solid rgba(37,99,235,.28);border-color:#2563eb;z-index:4}
+.seat.manual.drop-target{border-style:dashed;border-color:#2563eb;background:#eff6ff}
+.seat.manual.empty{opacity:.72}
+.seat.manual.empty .seat-text{visibility:visible;color:#8290a4;font-size:.64rem}
+.seating-fit{position:relative;margin:0 auto}
+.cerimonial-grid{display:grid;grid-template-columns:280px minmax(0,1fr);gap:16px}
+.cerimonial-table-list{max-height:72vh;overflow:auto}
+.manual-seat-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0}
+.manual-seat-hint{font-size:.8rem;color:var(--muted);line-height:1.35}
+.unseated-tray{display:flex;gap:7px;flex-wrap:wrap;padding:10px;border:1px dashed #cbd5e1;border-radius:12px;background:#f8fafc;margin-top:10px}
+.unseated-chip{border:1px solid #cbd5e1;background:#fff;border-radius:999px;padding:6px 9px;font-size:.78rem;font-weight:750;cursor:grab;touch-action:manipulation}
+.unseated-chip.selected{outline:3px solid rgba(37,99,235,.22);border-color:#2563eb}
+.member-list{display:grid;gap:6px;max-height:52vh;overflow:auto;border:1px solid var(--line);border-radius:12px;padding:8px}
+.member-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:9px;align-items:center;padding:8px;border-bottom:1px solid #eef2f7}
+.member-row:last-child{border-bottom:0}
+.overview-card{margin-bottom:16px}
+.cerimonial-overview-wrap{position:relative;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:#fff;touch-action:none}
+.cerimonial-overview-floor{position:relative;width:100%;aspect-ratio:16/9;min-width:0;background-color:#f8fafc;background-image:linear-gradient(90deg,#eef2f7 1px,transparent 1px),linear-gradient(#eef2f7 1px,transparent 1px);background-size:25px 25px;background-position:center;background-repeat:repeat;transform-origin:center center;will-change:transform}
+.overview-table-shape{position:absolute;transform:translate(-50%,-50%);background:#eef4fb;border:2px solid #7d9fc8;color:#183b68;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:800;border-radius:8px;box-sizing:border-box;z-index:1}
+.overview-table-shape.round{border-radius:50%}
+.overview-table-shape.u{background:transparent;border:0;border-radius:0}
+.overview-table-shape.u::before{content:"";position:absolute;inset:0;border:4px solid #7d9fc8;border-top:0;border-radius:0 0 8px 8px}
+.overview-table-name{position:relative;z-index:2;background:rgba(255,255,255,.86);padding:2px 5px;border-radius:5px;font-size:clamp(8px,.72vw,11px);max-width:92%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.overview-seat{position:absolute;transform:translate(-50%,-50%);z-index:3;border:1px solid #cbd5e1;background:#fff;border-radius:5px;padding:2px 4px;min-width:42px;max-width:92px;text-align:center;font-size:clamp(7px,.57vw,9.5px);font-weight:750;line-height:1.08;box-shadow:0 2px 6px rgba(15,23,42,.07);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.overview-seat.host{border-color:#0f766e;background:#ecfdf5}
+.overview-seat.rank1{border-color:#1d4ed8;background:#eff6ff}
+.overview-seat.empty{opacity:.22;min-width:16px;width:16px;height:16px;padding:0;border-radius:50%}
+.overview-seat.clickable,.overview-table-shape.clickable{cursor:pointer}
+.overview-legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;font-size:.78rem;color:var(--muted)}
 .photo-upload-box{display:grid;grid-template-columns:86px 1fr;gap:12px;align-items:center;border:1px dashed #cbd5e1;border-radius:12px;padding:10px}
 .photo-preview{width:86px;height:86px;border-radius:12px;background:#eef2f7;display:flex;align-items:center;justify-content:center;overflow:hidden;color:#7c899b;font-size:.72rem;font-weight:800;text-align:center}
 .photo-preview img{width:100%;height:100%;object-fit:cover}
@@ -196,6 +231,11 @@ tr:hover td{background:#fbfdff}
 .tv-arrival{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid #edf0f4;padding:8px 0;font-size:1.02rem}
 .tv-sponsors{background:#fff;border:1px solid var(--line);border-radius:16px;padding:10px;min-height:86px;display:flex;justify-content:center;align-items:center}
 
+@media (max-width:1200px){
+  .cerimonial-grid{grid-template-columns:1fr}
+  .cerimonial-table-list{max-height:none;display:flex;gap:7px;overflow:auto}
+  .cerimonial-table-list .btn{min-width:180px;margin-bottom:0!important}
+}
 @media (max-width:1100px){
   .stats{grid-template-columns:repeat(3,1fr)}
   .grid-4{grid-template-columns:repeat(2,1fr)}
@@ -216,6 +256,9 @@ tr:hover td{background:#fbfdff}
   .avatar{width:62px;height:62px}
   .tv-grid{grid-template-columns:1fr}.tv-page{display:block}.tv-panel{margin-bottom:12px}
   .content-links{grid-template-columns:1fr}
+  .seating-stage{min-height:420px;padding:6px}
+  .seat.horizontal{width:150px}
+  .manual-seat-toolbar .btn{flex:1 1 auto}
 }
 @media (max-width:520px){
   .stats{grid-template-columns:1fr 1fr}.stat strong{font-size:1.35rem}
@@ -243,7 +286,7 @@ tr:hover td{background:#fbfdff}
       <button data-view="conteudos">Conteúdos</button>
       <button data-view="acessos">Acessos</button>
     </nav>
-    <div class="sidebar-footer">SGCES v1.4.5</div>
+    <div class="sidebar-footer">SGCES v1.4.6</div>
   </aside>
 
   <main class="main">
@@ -547,10 +590,10 @@ tr:hover td{background:#fbfdff}
     const format=String(table.FORMATO||'REDONDA').toUpperCase();
     total=Math.max(1,total||num(table.CAPACIDADE,8));
     if(format==='REDONDA'){
-      const cardW=170,gap=22;
-      const radius=Math.max(215,((cardW+gap)*total)/(2*Math.PI));
-      const pad=120,canvasW=Math.ceil(radius*2+cardW+pad),canvasH=Math.ceil(radius*2+150);
-      const diameter=Math.max(230,Math.min(360,radius*1.05));
+      const cardW=150,gap=10;
+      const radius=Math.max(190,((cardW+gap)*total)/(2*Math.PI));
+      const pad=82,canvasW=Math.ceil(radius*2+cardW+pad),canvasH=Math.ceil(radius*2+128);
+      const diameter=Math.max(220,Math.min(340,radius*1.08));
       return{format,canvasW,canvasH,cx:canvasW/2,cy:canvasH/2,radius,tableW:diameter,tableH:diameter};
     }
     if(format==='U'){
@@ -613,9 +656,18 @@ tr:hover td{background:#fbfdff}
     return{x:m.cx,y:m.cy-m.tableH/2-82};
   }
 
-  function renderSeating(container,table,guests){
-    container.innerHTML='<div class="seating-canvas"></div>';
-    const canvas=container.firstElementChild,format=String(table.FORMATO||'REDONDA').toUpperCase();
+  function fitSeatText_(seat){
+    const text=seat&&seat.querySelector('.seat-text');if(!text)return;
+    let size=parseFloat(getComputedStyle(text).fontSize)||12,min=9,guard=0;
+    while(size>min&&guard++<12&&(text.scrollWidth>text.clientWidth+1||text.scrollHeight>text.clientHeight+1)){
+      size-=.5;text.style.fontSize=size+'px';
+    }
+  }
+
+  function renderSeating(container,table,guests,opts){
+    opts=opts||{};
+    container.innerHTML='<div class="seating-fit"><div class="seating-canvas"></div></div>';
+    const fit=container.firstElementChild,canvas=fit.firstElementChild,format=String(table.FORMATO||'REDONDA').toUpperCase();
     const explicitSeats=(guests||[]).map(g=>String(g.ASSENTO||'')).filter(Boolean);
     const detectedTotal=explicitSeats.reduce((mx,code)=>{
       if(/^R\d+$/.test(code))return Math.max(mx,parseInt(code.slice(1),10)+1);
@@ -636,14 +688,44 @@ tr:hover td{background:#fbfdff}
     const assigned={};(guests||[]).filter(g=>g.ASSENTO).forEach(g=>{assigned[String(g.ASSENTO)]=g;});
     seatCodesForTable(table,total).forEach(code=>{
       const g=assigned[code],p=seatCoordinates(table,code,total),orientation=seatOrientation(table,code,total);
-      const s=document.createElement('div');s.className='seat '+orientation+(g?'':' empty');s.style.left=p.x+'px';s.style.top=p.y+'px';
-      if(!g){s.title='Assento vazio';s.innerHTML='<div class="seat-text"></div>';canvas.appendChild(s);return;}
-      const nome=[g.POSTO_GRAD,g.NOME_GUERRA||g.NOME_COMPLETO].filter(Boolean).join(' ');
-      s.title=[nome,g.NOME_COMPLETO].filter(Boolean).join(' • ');
-      const fontSize=nome.length>28?'.67rem':nome.length>22?'.70rem':'.74rem';
-      s.innerHTML=`<div class="seat-text" style="font-size:${fontSize}">${esc(nome)}</div>`;
-      canvas.appendChild(s);
+      const s=document.createElement('div');s.className='seat '+orientation+(g?'':' empty')+(opts.editor?' manual':'')+(g&&String(opts.selectedGuestId||'')===String(g.ID_CONVIDADO)?' selected':'');
+      s.style.left=p.x+'px';s.style.top=p.y+'px';s.dataset.seat=code;
+      if(format==='REDONDA'&&orientation==='horizontal')s.style.width='150px';
+      if(!g){
+        s.title=opts.editor?'Assento '+code:'Assento vazio';s.innerHTML=`<div class="seat-text">${opts.editor?esc(code):''}</div>`;
+      }else{
+        const nome=[g.POSTO_GRAD,g.NOME_GUERRA||g.NOME_COMPLETO].filter(Boolean).join(' ');
+        s.title=[nome,g.NOME_COMPLETO].filter(Boolean).join(' • ');s.dataset.guest=String(g.ID_CONVIDADO||'');
+        const fontSize=nome.length>32?'.64rem':nome.length>26?'.68rem':nome.length>20?'.72rem':'.76rem';
+        s.innerHTML=`<div class="seat-text" style="font-size:${fontSize}">${esc(nome)}</div>`;
+        if(opts.editor){
+          s.draggable=true;
+          s.addEventListener('dragstart',ev=>{try{ev.dataTransfer.setData('text/plain',String(g.ID_CONVIDADO));ev.dataTransfer.effectAllowed='move';}catch(e){}});
+        }
+      }
+      if(opts.editor){
+        s.addEventListener('dragover',ev=>{ev.preventDefault();s.classList.add('drop-target');});
+        s.addEventListener('dragleave',()=>s.classList.remove('drop-target'));
+        s.addEventListener('drop',ev=>{ev.preventDefault();s.classList.remove('drop-target');let gid='';try{gid=ev.dataTransfer.getData('text/plain');}catch(e){}if(gid&&typeof opts.onSeatTarget==='function')opts.onSeatTarget(gid,code);});
+        s.addEventListener('click',()=>{
+          if(opts.selectedGuestId&&String(opts.selectedGuestId)!==String(g&&g.ID_CONVIDADO||'')){if(typeof opts.onSeatTarget==='function')opts.onSeatTarget(String(opts.selectedGuestId),code);return;}
+          if(g&&typeof opts.onSelectGuest==='function')opts.onSelectGuest(String(g.ID_CONVIDADO));
+        });
+      }
+      canvas.appendChild(s);fitSeatText_(s);
     });
+    if(container.isConnected&&!opts.noFit){
+      const applyFit=()=>{
+        const avail=Math.max(280,(container.clientWidth||m.canvasW)-20),minScale=avail<520?.82:avail<820?.76:.68,scale=Math.min(1,Math.max(minScale,avail/m.canvasW));
+        canvas.style.transform=`scale(${scale})`;canvas.style.transformOrigin='top left';fit.style.width=(m.canvasW*scale)+'px';fit.style.height=(m.canvasH*scale)+'px';
+      };
+      applyFit();
+      if(typeof ResizeObserver!=='undefined'){
+        const ro=new ResizeObserver(()=>{if(!container.isConnected){try{ro.disconnect();}catch(e){}return;}applyFit();});
+        ro.observe(container);
+      }
+    }else{fit.style.width=m.canvasW+'px';fit.style.height=m.canvasH+'px';}
+    return canvas;
   }
 
   function enablePanZoom(wrap,floor){
@@ -678,7 +760,7 @@ tr:hover td{background:#fbfdff}
 <script>
 (function(){
   const U=window.SGCES_UI, A=window.SGCES_API;
-  const state={events:[],eventId:'',activeEventId:'',postos:[],openEventCount:0,maxOpenEvents:10,data:{event:null,guests:[],tables:[],contents:[],sponsors:[],stats:{}},view:'dashboard',selectedCerimonialTable:''};
+  const state={events:[],eventId:'',activeEventId:'',postos:[],openEventCount:0,maxOpenEvents:10,data:{event:null,guests:[],tables:[],contents:[],sponsors:[],stats:{}},view:'dashboard',selectedCerimonialTable:'',manualSeatMode:false,manualSeatGuestId:''};
 
   document.addEventListener('DOMContentLoaded',init);
 
@@ -901,10 +983,11 @@ tr:hover td{background:#fbfdff}
         <td><strong>${U.esc(nomeCompleto||g.NOME_COMPLETO||'')}</strong>${titularTxt}${badges?`<div style="margin-top:4px">${badges}</div>`:''}</td>
         <td>${U.esc(tableFor(g.MESA_ID)?.NOME||'—')}</td>
         <td>${U.badgeStatus(g.RSVP)}</td><td>${U.badgeStatus(g.CHECKIN)}</td>
-        <td class="nowrap"><button class="btn btn-sm" data-reorder-g="${U.esc(g.ID_CONVIDADO)}">Reordenar</button> <button class="btn btn-sm" data-edit-g="${U.esc(g.ID_CONVIDADO)}">Editar</button> <button class="btn btn-sm btn-danger" data-del-g="${U.esc(g.ID_CONVIDADO)}">Excluir</button></td>
+        <td class="nowrap"><button class="btn btn-sm" data-reorder-g="${U.esc(g.ID_CONVIDADO)}">Reordenar</button> ${g.MESA_ID?`<button class="btn btn-sm" data-swap-g="${U.esc(g.ID_CONVIDADO)}">Trocar mesa</button>`:''} <button class="btn btn-sm" data-edit-g="${U.esc(g.ID_CONVIDADO)}">Editar</button> <button class="btn btn-sm btn-danger" data-del-g="${U.esc(g.ID_CONVIDADO)}">Excluir</button></td>
       </tr>`;
     }).join('')}</tbody></table></div>`:'<p class="muted">Nenhum convidado encontrado.</p>';
     root.querySelectorAll('[data-reorder-g]').forEach(b=>b.onclick=()=>reorderGuestModal(guestById(b.dataset.reorderG)));
+    root.querySelectorAll('[data-swap-g]').forEach(b=>b.onclick=()=>swapTableModal(guestById(b.dataset.swapG)));
     root.querySelectorAll('[data-edit-g]').forEach(b=>b.onclick=()=>guestModal(guestById(b.dataset.editG)));
     root.querySelectorAll('[data-del-g]').forEach(b=>b.onclick=()=>{const g=guestById(b.dataset.delG);if(confirm(`Excluir ${g.NOME_COMPLETO}?`))runBusy(async()=>{await A.call('deleteGuest',{guestId:g.ID_CONVIDADO});await loadEvent();renderConvidados();U.toast('Convidado excluído.','success');});});
   }
@@ -913,6 +996,18 @@ tr:hover td{background:#fbfdff}
     return (state.data.guests||[]).slice().sort(U.byPrecedence)
       .filter(x=>String(x.ID_CONVIDADO)!==String(g&&g.ID_CONVIDADO))
       .map(x=>`<option value="${U.esc(x.ID_CONVIDADO)}">${U.esc((x.ORDEM_PRECEDENCIA?x.ORDEM_PRECEDENCIA+' • ':'')+U.displayName(x))}</option>`).join('');
+  }
+
+  function swapTableModal(g){
+    if(!g||!g.MESA_ID){U.toast('Este convidado ainda não está em uma mesa.','error');return;}
+    const currentTable=tableFor(g.MESA_ID),targets=(state.data.tables||[]).filter(t=>String(t.ID_MESA)!==String(g.MESA_ID));
+    if(!targets.length){U.toast('Não há outra mesa disponível para troca.','error');return;}
+    const opts=targets.map(t=>`<option value="${U.esc(t.ID_MESA)}">${U.esc(t.NOME)} (${U.num(t.OCUPACAO)}/${U.num(t.CAPACIDADE)})</option>`).join('');
+    const m=U.modal('Trocar de mesa',`<p><strong>${U.esc(U.displayName(g))}</strong></p><p class="muted">Mesa atual: <strong>${U.esc(currentTable?.NOME||'—')}</strong>. Escolha a mesa de destino e a pessoa que virá para a mesa atual. A troca funciona mesmo quando a mesa de destino está cheia, desde que os dois lados respeitem suas capacidades.</p><div class="form-grid"><div class="field"><label>Mesa de destino</label><select id="swapTable">${opts}</select></div><div class="field"><label>Trocar com</label><select id="swapGuest"></select></div></div><div class="small muted" id="swapInfo" style="margin-top:10px"></div>`,`<button class="btn" data-close>Cancelar</button><button class="btn btn-primary" data-save>Confirmar troca</button>`);
+    const tableSel=U.$('#swapTable',m),guestSel=U.$('#swapGuest',m),info=U.$('#swapInfo',m);
+    function refresh(){const tid=tableSel.value,t=tableFor(tid),people=(state.data.guests||[]).filter(x=>String(x.MESA_ID)===String(tid)&&U.normalize(x.RSVP)!=='nao comparecera').sort(U.byPrecedence);guestSel.innerHTML=people.length?people.map(x=>`<option value="${U.esc(x.ID_CONVIDADO)}">${U.esc(U.displayName(x))}</option>`).join(''):'<option value="">Nenhum convidado nesta mesa</option>';info.textContent=t?`${people.length}/${U.num(t.CAPACIDADE)} pessoas em ${t.NOME}. Se o convidado escolhido for titular, o grupo diretamente vinculado acompanha a troca.`:'';}
+    tableSel.onchange=refresh;refresh();
+    m.querySelector('[data-save]').onclick=async ev=>{const b=ev.currentTarget,other=guestSel.value;if(!other){U.toast('Escolha com quem fazer a troca.','error');return;}U.setBusy(b,true);try{await A.call('swapGuestTables',{guestId:g.ID_CONVIDADO,otherGuestId:other},65000);m.remove();await loadEvent();renderConvidados();U.toast('Troca de mesas concluída.','success');}catch(err){U.toast(err.message,'error');}finally{U.setBusy(b,false);}};
   }
 
   function reorderGuestModal(g){
@@ -965,9 +1060,10 @@ tr:hover td{background:#fbfdff}
         ${!g.ID_CONVIDADO?'<div class="field" style="grid-column:span 2"><label>Acompanhante (opcional)</label><input id="gAcomp" placeholder="Nome completo do acompanhante"></div><div class="field"><label>Sexo acompanhante</label><select id="gAcompSexo"><option></option><option>MASCULINO</option><option>FEMININO</option></select></div>':''}
         <div class="field" style="grid-column:1/-1"><label>Observação da recepção</label><textarea id="gObs">${U.esc(g.OBS_RECEPCAO||'')}</textarea></div>
       </div>`,
-      `<button class="btn" data-close>Cancelar</button><button class="btn btn-primary" data-save>Salvar</button>`);
+      `<button class="btn" data-close>Cancelar</button>${g.ID_CONVIDADO&&g.MESA_ID?'<button class="btn" data-swap-table>Trocar de mesa</button>':''}<button class="btn btn-primary" data-save>Salvar</button>`);
     const place=U.$('#gPlace',m),anchor=U.$('#gAnchor',m);
     place.onchange=()=>{anchor.disabled=!['ANTES','DEPOIS'].includes(place.value);if(anchor.disabled)anchor.value='';};
+    const swapBtn=m.querySelector('[data-swap-table]');if(swapBtn)swapBtn.onclick=()=>swapTableModal(g);
     m.querySelector('[data-save]').onclick=async ev=>{
       const btn=ev.currentTarget;U.setBusy(btn,true);
       try{
@@ -1274,39 +1370,119 @@ tr:hover td{background:#fbfdff}
     return '↗';
   }
 
+  function plannedCerimonialTables(){
+    const all=state.data.tables||[],planned=all.filter(t=>U.normalize(t.TIPO_ALOCACAO)==='planejada');
+    return planned.length?planned:all;
+  }
+
+  function rotateOverviewPoint_(table,pos){
+    const deg=U.num(table.ROTACAO,0);if(!deg)return pos;
+    const cx=U.num(table.X,50),cy=U.num(table.Y,50),rad=deg*Math.PI/180;
+    // O croqui é 16:9: converte percentuais para o mesmo espaço físico antes de girar.
+    const dx=(pos.x-cx)*16/100,dy=(pos.y-cy)*9/100;
+    const rx=dx*Math.cos(rad)-dy*Math.sin(rad),ry=dx*Math.sin(rad)+dy*Math.cos(rad);
+    return{x:cx+rx*100/16,y:cy+ry*100/9};
+  }
+
+  function overviewSeatPosition(table,code,total){
+    const format=String(table.FORMATO||'REDONDA').toUpperCase(),x=U.num(table.X,50),y=U.num(table.Y,50);
+    let w=U.num(table.W,format==='RETANGULAR'?18:10),h=format==='REDONDA'?w*9/16:U.num(table.H,format==='RETANGULAR'?8:10),pos;
+    if(format==='REDONDA'){
+      const i=U.num(String(code).replace('R',''),0),a=(-90)+(360*i/Math.max(1,total)),rad=a*Math.PI/180;
+      pos={x:x+Math.cos(rad)*(w/2+3.4),y:y+Math.sin(rad)*(h/2+4.1)};
+    }else if(format==='U'){
+      const n=Math.max(1,U.num(String(code).replace('U',''),1)),baseCount=Math.max(1,Math.min(total,U.num(table.U_CABECEIRA_QTD,5)));
+      if(n<=baseCount){
+        const side=Math.ceil((n-1)/2),dir=n===1?0:(n%2===0?1:-1),step=Math.min(3.8,Math.max(1.8,w/Math.max(4,baseCount)));
+        pos={x:x+dir*side*step,y:y+h/2+3.5};
+      }else{
+        const k=n-baseCount,internal=U.yes(table.U_CADEIRAS_INTERNAS),per=internal?4:2,level=Math.floor((k-1)/per),slot=(k-1)%per,levels=Math.max(1,Math.ceil((total-baseCount)/per));
+        const yy=y+h/2-(level+1)*(h/(levels+1));
+        if(internal){const xs=[x+w/2+3,x-w/2-3,x+w/2-2.3,x-w/2+2.3];pos={x:xs[slot],y:yy};}
+        else pos={x:slot===0?x+w/2+3:x-w/2-3,y:yy};
+      }
+    }else if(code==='L')pos={x:x-w/2-3.5,y};
+    else if(code==='R')pos={x:x+w/2+3.5,y};
+    else{
+      const heads=U.yes(table.CABECEIRAS),side=total-(heads?2:0),top=Math.ceil(side/2),bottom=Math.floor(side/2);
+      if(String(code).startsWith('T')){const i=U.num(String(code).slice(1),0);pos={x:top<=1?x:x-w/2+2+i*((w-4)/(top-1)),y:y-h/2-3.2};}
+      else if(String(code).startsWith('B')){const i=U.num(String(code).slice(1),0);pos={x:bottom<=1?x:x-w/2+2+i*((w-4)/(bottom-1)),y:y+h/2+3.2};}
+      else pos={x,y:y-h/2-3.2};
+    }
+    return rotateOverviewPoint_(table,pos);
+  }
+
+  function renderCerimonialOverview(root,tables){
+    if(!root)return;
+    const e=state.data.event||{},bg=U.driveImage(e.CROQUI_URL||'');
+    root.innerHTML=`<div class="floor-toolbar"><div class="floor-zoom-controls"><button class="btn btn-sm" data-ov-out>−</button><button class="btn btn-sm" data-ov-reset>100%</button><button class="btn btn-sm" data-ov-in>+</button></div><span class="floor-pan-hint">Visão geral das mesas planejadas e dos lugares já definidos. Toque em uma mesa para abrir o detalhe.</span></div><div class="cerimonial-overview-wrap"><div class="cerimonial-overview-floor" id="cerimonialOverviewFloor"></div></div><div class="overview-legend"><span>Verde: anfitrião</span><span>Azul: maior precedência da mesa</span><span>Use + para ler nomes em telas pequenas</span></div>`;
+    const wrap=root.querySelector('.cerimonial-overview-wrap'),floor=root.querySelector('#cerimonialOverviewFloor');
+    if(bg){floor.style.backgroundImage=`url("${String(bg).replace(/"/g,'%22')}")`;floor.style.backgroundSize='contain';floor.style.backgroundPosition='center';floor.style.backgroundRepeat='no-repeat';}
+    const activeGuests=(state.data.guests||[]).filter(g=>U.normalize(g.RSVP)!=='nao comparecera');
+    tables.forEach(t=>{
+      const format=String(t.FORMATO||'REDONDA').toUpperCase(),shape=document.createElement('div'),w=U.num(t.W,format==='RETANGULAR'?18:10),h=format==='REDONDA'?w*9/16:U.num(t.H,format==='RETANGULAR'?8:10);
+      shape.className='overview-table-shape '+(format==='REDONDA'?'round':format==='U'?'u':'rect')+' clickable';shape.style.left=U.num(t.X,50)+'%';shape.style.top=U.num(t.Y,50)+'%';shape.style.width=w+'%';shape.style.height=h+'%';shape.style.transform=`translate(-50%,-50%) rotate(${U.num(t.ROTACAO,0)}deg)`;
+      const at=activeGuests.filter(g=>String(g.MESA_ID)===String(t.ID_MESA)).sort(U.byPrecedence),unseated=at.filter(g=>!g.ASSENTO).length;
+      shape.innerHTML=`<span class="overview-table-name">${U.esc(t.NOME)}${unseated?` • ${unseated} sem lugar`:''}</span>`;shape.title=`${t.NOME} — ${at.length}/${U.num(t.CAPACIDADE)} pessoas`;shape.onclick=()=>{state.selectedCerimonialTable=t.ID_MESA;state.manualSeatGuestId='';renderCerimonial();setTimeout(()=>U.$('#seatingStage')?.scrollIntoView({behavior:'smooth',block:'center'}),30);};floor.appendChild(shape);
+      const major=at.find(g=>U.normalize(g.NIVEL)==='autoridade')||at[0]||null,total=Math.max(1,U.num(t.CAPACIDADE),at.length);
+      at.filter(g=>g.ASSENTO).forEach(g=>{
+        const pos=overviewSeatPosition(t,String(g.ASSENTO),total),el=document.createElement('div'),host=String(g.ID_CONVIDADO)===String(t.ANFITRIAO_ID||e.ANFITRIAO_ID||''),rank1=major&&String(g.ID_CONVIDADO)===String(major.ID_CONVIDADO);
+        el.className='overview-seat clickable'+(host?' host':'')+(rank1?' rank1':'');el.style.left=pos.x+'%';el.style.top=pos.y+'%';el.style.transform='translate(-50%,-50%)';
+        const short=[g.POSTO_GRAD,g.NOME_GUERRA||g.NOME_COMPLETO].filter(Boolean).join(' ');el.textContent=short;el.title=[short,g.NOME_COMPLETO,t.NOME,g.ASSENTO].filter(Boolean).join(' • ');el.onclick=ev=>{ev.stopPropagation();state.selectedCerimonialTable=t.ID_MESA;state.manualSeatGuestId=g.ID_CONVIDADO;renderCerimonial();};floor.appendChild(el);
+      });
+    });
+    const ctl=U.enablePanZoom(wrap,floor);root.querySelector('[data-ov-in]').onclick=()=>ctl.zoomIn();root.querySelector('[data-ov-out]').onclick=()=>ctl.zoomOut();root.querySelector('[data-ov-reset]').onclick=()=>ctl.reset();
+  }
+
+  function tableMembersModal(table){
+    const current=new Set((state.data.guests||[]).filter(g=>String(g.MESA_ID)===String(table.ID_MESA)&&U.normalize(g.RSVP)!=='nao comparecera').map(g=>String(g.ID_CONVIDADO)));
+    const guests=(state.data.guests||[]).filter(g=>U.normalize(g.RSVP)!=='nao comparecera').slice().sort(U.byPrecedence);
+    const m=U.modal('Selecionar pessoas da mesa',`<p class="muted">Marque exatamente quem deverá compor <strong>${U.esc(table.NOME)}</strong>. Capacidade: ${U.num(table.CAPACIDADE)}. Quem for retirado desta composição ficará sem mesa.</p><div class="field"><input id="memberSearch" class="search-input" placeholder="Buscar nome, posto ou mesa"></div><div class="small muted" id="memberCount" style="margin:8px 0"></div><div class="member-list" id="memberList"></div>`,`<button class="btn" data-close>Cancelar</button><button class="btn btn-primary" data-save>Salvar composição manual</button>`);
+    const list=U.$('#memberList',m),count=U.$('#memberCount',m),search=U.$('#memberSearch',m);
+    function draw(){const q=U.normalize(search.value),visible=guests.filter(g=>!q||U.normalize([g.POSTO_GRAD,g.NOME_COMPLETO,g.NOME_GUERRA,tableFor(g.MESA_ID)?.NOME].join(' ')).includes(q));list.innerHTML=visible.map(g=>`<label class="member-row"><input type="checkbox" data-member="${U.esc(g.ID_CONVIDADO)}" ${current.has(String(g.ID_CONVIDADO))?'checked':''}><span><strong>${U.esc(U.displayName(g))}</strong><span class="small muted" style="display:block">${U.esc(tableFor(g.MESA_ID)?.NOME||'Sem mesa')}</span></span><span class="small muted">${U.esc(g.RSVP||'')}</span></label>`).join('');list.querySelectorAll('[data-member]').forEach(ch=>ch.onchange=()=>{if(ch.checked)current.add(String(ch.dataset.member));else current.delete(String(ch.dataset.member));refreshCount();});refreshCount();}
+    function refreshCount(){count.textContent=`${current.size}/${U.num(table.CAPACIDADE)} pessoa(s) selecionada(s)`;count.style.color=current.size>U.num(table.CAPACIDADE)?'var(--danger)':'';}
+    search.oninput=draw;draw();
+    m.querySelector('[data-save]').onclick=async ev=>{const b=ev.currentTarget;if(current.size>U.num(table.CAPACIDADE)){U.toast('A seleção excede a capacidade da mesa.','error');return;}U.setBusy(b,true);try{await A.call('setTableMembers',{eventId:state.eventId,tableId:table.ID_MESA,guestIds:Array.from(current)},65000);m.remove();state.manualSeatGuestId='';await loadEvent();renderCerimonial();U.toast('Composição manual da mesa atualizada.','success');}catch(err){U.toast(err.message,'error');}finally{U.setBusy(b,false);}};
+  }
+
+  async function moveManualSeat(table,guestId,seat){
+    await runBusy(async()=>{await A.call('moveTableSeat',{tableId:table.ID_MESA,guestId,targetSeat:seat},55000);state.manualSeatGuestId='';await loadEvent();renderCerimonial();U.toast(seat?'Lugar atualizado.':'Convidado retirado do assento.','success');},'Salvando lugar');
+  }
+
   function renderCerimonial(){
     const c=U.$('[data-section="cerimonial"]');if(requireEvent(c,'Cerimonial'))return;
-    const allTables=state.data.tables||[],tables=allTables.filter(t=>U.yes(t.USA_ICA));
+    const tables=plannedCerimonialTables();
     if(!state.selectedCerimonialTable&&tables.length)state.selectedCerimonialTable=tables[0].ID_MESA;
+    if(state.selectedCerimonialTable&&!tables.some(x=>String(x.ID_MESA)===String(state.selectedCerimonialTable)))state.selectedCerimonialTable=tables[0]?.ID_MESA||'';
     const t=tableById(state.selectedCerimonialTable),seated=t?(state.data.guests||[]).filter(g=>String(g.MESA_ID)===String(t.ID_MESA)&&U.normalize(g.RSVP)!=='nao comparecera').sort(U.byPrecedence):[];
-    const mainDir=t?directionToPrincipal(t):'';
-    const major=seated.find(g=>U.normalize(g.NIVEL)==='autoridade')||seated[0]||null;
+    const mainDir=t?directionToPrincipal(t):'',major=seated.find(g=>U.normalize(g.NIVEL)==='autoridade')||seated[0]||null;
     const info=t&&!U.yes(t.PRINCIPAL)&&major?`<div class="small" style="margin-top:8px"><strong>Maior precedência:</strong> ${U.esc([major.POSTO_GRAD,major.NOME_GUERRA||major.NOME_COMPLETO].filter(Boolean).join(' '))}${mainDir?` • Mesa principal ${U.esc(mainDir)}`:''}</div>`:'';
     const autoOn=U.yes((state.data.event||{}).AUTO_AUTORIDADES);
-    const headerActions=`<button class="btn" data-auth-config>Distribuição automática</button>${autoOn?'<button class="btn" data-redistribute>Redistribuir agora</button>':''}<button class="btn" data-print-layout>Imprimir</button>${t?'<button class="btn" data-clear>Limpar assentos</button><button class="btn btn-primary" data-compose>Aplicar composição padrão</button>':''}`;
-    c.innerHTML=heading('Cerimonial','',headerActions)+`
-      <div class="grid grid-2" style="grid-template-columns:280px 1fr">
-        <div class="card"><h3>Mesas com composição padrão</h3>${tables.length?tables.map(x=>`<button class="btn ${String(x.ID_MESA)===String(state.selectedCerimonialTable)?'btn-soft':''}" style="width:100%;margin-bottom:7px;justify-content:flex-start;white-space:normal;text-align:left" data-ct="${U.esc(x.ID_MESA)}">${U.esc(x.NOME)} • ${U.esc(x.FORMATO)}</button>`).join(''):'<p class="muted">Nenhuma mesa com composição padrão.</p>'}</div>
-        <div class="card">${t?`<div class="section-actions"><div><h3 style="margin:0">${U.esc(t.NOME)}</h3><div class="small muted">${seated.length}/${U.num(t.CAPACIDADE)} pessoas</div>${info}</div><button class="btn btn-sm" data-edit-table>Editar mesa</button></div><div class="seating-stage" id="seatingStage"></div>`:'<p class="muted">Selecione uma mesa.</p>'}</div>
-      </div>`;
-    c.querySelectorAll('[data-ct]').forEach(b=>b.onclick=()=>{state.selectedCerimonialTable=b.dataset.ct;renderCerimonial();});
-    const authConfig=c.querySelector('[data-auth-config]');
-    if(authConfig)authConfig.onclick=()=>showView('mesas');
-    const redistribute=c.querySelector('[data-redistribute]');
-    if(redistribute)redistribute.onclick=()=>runBusy(async()=>{const r=await A.call('redistributeAuthorities',{eventId:state.eventId},70000);await loadEvent();renderCerimonial();U.toast(`${r.usedTables||0} mesa(s) destinadas às autoridades.`,'success');},'Distribuindo');
-    const printLayout=c.querySelector('[data-print-layout]');
-    if(printLayout)printLayout.onclick=()=>printCerimonialLayouts();
+    const headerActions=`<button class="btn" data-auth-config>Distribuição automática</button>${autoOn?'<button class="btn" data-redistribute>Redistribuir agora</button>':''}<button class="btn" data-print-layout>Imprimir</button>`;
+    c.innerHTML=heading('Cerimonial','Distribuição visual das mesas e dos lugares.',headerActions)+`<div class="card overview-card"><div class="section-actions"><div><h3 style="margin:0">Visão geral do croqui</h3><div class="small muted">Mesas planejadas e posições já definidas.</div></div></div><div id="cerimonialOverview"></div></div><div class="cerimonial-grid"><div class="card"><h3>Mesas planejadas</h3><div class="cerimonial-table-list">${tables.length?tables.map(x=>`<button class="btn ${String(x.ID_MESA)===String(state.selectedCerimonialTable)?'btn-soft':''}" style="width:100%;margin-bottom:7px;justify-content:flex-start;white-space:normal;text-align:left" data-ct="${U.esc(x.ID_MESA)}">${U.esc(x.NOME)} • ${U.esc(x.FORMATO)} <span class="badge ${U.yes(x.USA_ICA)?'info':''}" style="margin-left:auto">Padrão ${U.yes(x.USA_ICA)?'SIM':'NÃO'}</span></button>`).join(''):'<p class="muted">Nenhuma mesa planejada.</p>'}</div></div><div class="card">${t?`<div class="section-actions"><div><h3 style="margin:0">${U.esc(t.NOME)}</h3><div class="small muted">${seated.length}/${U.num(t.CAPACIDADE)} pessoas • ${U.esc(t.FORMATO)}</div>${info}</div><div class="actions"><button class="btn btn-sm" data-toggle-standard>Composição padrão: ${U.yes(t.USA_ICA)?'SIM':'NÃO'}</button><button class="btn btn-sm" data-edit-table>Editar mesa</button></div></div><div class="manual-seat-toolbar"><button class="btn ${state.manualSeatMode?'btn-soft':''}" data-manual>${state.manualSeatMode?'Encerrar edição de lugares':'Editar lugares manualmente'}</button><button class="btn" data-members>Selecionar pessoas</button>${U.yes(t.USA_ICA)?'<button class="btn btn-primary" data-compose>Aplicar composição padrão</button>':''}<button class="btn" data-clear>Limpar assentos</button>${state.manualSeatGuestId?'<button class="btn btn-danger" data-unseat>Retirar selecionado do assento</button>':''}</div>${state.manualSeatMode?'<div class="manual-seat-hint">Arraste um nome para outro assento. Em celular ou tablet, toque primeiro no nome e depois no assento desejado. Se o destino estiver ocupado, os dois trocam de lugar.</div>':''}<div class="seating-stage" id="seatingStage"></div><div id="unseatedTray"></div>`:'<p class="muted">Selecione uma mesa.</p>'}</div></div>`;
+    renderCerimonialOverview(U.$('#cerimonialOverview',c),tables);
+    c.querySelectorAll('[data-ct]').forEach(b=>b.onclick=()=>{state.selectedCerimonialTable=b.dataset.ct;state.manualSeatGuestId='';renderCerimonial();});
+    c.querySelector('[data-auth-config]').onclick=()=>showView('mesas');
+    const redistribute=c.querySelector('[data-redistribute]');if(redistribute)redistribute.onclick=()=>runBusy(async()=>{const r=await A.call('redistributeAuthorities',{eventId:state.eventId},70000);await loadEvent();renderCerimonial();U.toast(`${r.usedTables||0} mesa(s) destinadas às autoridades.`,'success');},'Distribuindo');
+    c.querySelector('[data-print-layout]').onclick=()=>printCerimonialLayouts();
     if(t){
-      U.renderSeating(U.$('#seatingStage',c),t,seated);
+      const renderDetail=()=>U.renderSeating(U.$('#seatingStage',c),t,seated,{editor:state.manualSeatMode,selectedGuestId:state.manualSeatGuestId,onSelectGuest:id=>{state.manualSeatGuestId=String(state.manualSeatGuestId)===String(id)?'':id;renderCerimonial();},onSeatTarget:(id,seat)=>moveManualSeat(t,id,seat)});
+      renderDetail();
+      const unseated=seated.filter(g=>!g.ASSENTO),tray=U.$('#unseatedTray',c);
+      if(state.manualSeatMode&&unseated.length){tray.innerHTML=`<div class="small muted" style="margin-top:10px">Sem assento definido:</div><div class="unseated-tray">${unseated.map(g=>`<button class="unseated-chip ${String(state.manualSeatGuestId)===String(g.ID_CONVIDADO)?'selected':''}" draggable="true" data-unseated="${U.esc(g.ID_CONVIDADO)}">${U.esc(U.displayName(g))}</button>`).join('')}</div>`;tray.querySelectorAll('[data-unseated]').forEach(ch=>{ch.onclick=()=>{state.manualSeatGuestId=ch.dataset.unseated;renderCerimonial();};ch.addEventListener('dragstart',ev=>{try{ev.dataTransfer.setData('text/plain',ch.dataset.unseated);ev.dataTransfer.effectAllowed='move';}catch(e){}});});}
       c.querySelector('[data-edit-table]').onclick=()=>tableModal(t);
-      c.querySelector('[data-compose]').onclick=()=>runBusy(async()=>{await A.call('composeTable',{tableId:t.ID_MESA},65000);await loadEvent();renderCerimonial();U.toast('Mesa composta.','success');});
-      c.querySelector('[data-clear]').onclick=()=>runBusy(async()=>{await A.call('clearTableSeats',{tableId:t.ID_MESA},55000);await loadEvent();renderCerimonial();});
+      c.querySelector('[data-members]').onclick=()=>tableMembersModal(t);
+      c.querySelector('[data-manual]').onclick=()=>{state.manualSeatMode=!state.manualSeatMode;state.manualSeatGuestId='';renderCerimonial();};
+      c.querySelector('[data-toggle-standard]').onclick=()=>runBusy(async()=>{await A.call('saveTable',{ID_MESA:t.ID_MESA,eventId:state.eventId,usaIca:U.yes(t.USA_ICA)?'NAO':'SIM'},55000);await loadEvent();renderCerimonial();U.toast('Configuração de composição padrão atualizada.','success');});
+      const compose=c.querySelector('[data-compose]');if(compose)compose.onclick=()=>runBusy(async()=>{await A.call('composeTable',{tableId:t.ID_MESA},65000);state.manualSeatGuestId='';await loadEvent();renderCerimonial();U.toast('Mesa composta. Você pode ajustar manualmente qualquer lugar.','success');});
+      c.querySelector('[data-clear]').onclick=()=>runBusy(async()=>{await A.call('clearTableSeats',{tableId:t.ID_MESA},55000);state.manualSeatGuestId='';await loadEvent();renderCerimonial();});
+      const unseat=c.querySelector('[data-unseat]');if(unseat)unseat.onclick=()=>moveManualSeat(t,state.manualSeatGuestId,'');
     }
   }
 
   function printCerimonialLayouts(){
-    const tables=(state.data.tables||[]).filter(t=>U.yes(t.USA_ICA));
-    if(!tables.length){U.toast('Não há mesas com composição padrão selecionada.','error');return;}
+    const tables=plannedCerimonialTables();
+    if(!tables.length){U.toast('Não há mesas planejadas para imprimir.','error');return;}
     const eventName=(state.data.event&&state.data.event.NOME)||'Evento';
     const css=Array.from(document.querySelectorAll('style')).map(s=>s.textContent).join('\n');
     const pages=tables.map(table=>{
