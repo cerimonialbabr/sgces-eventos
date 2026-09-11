@@ -325,7 +325,7 @@ tr:hover td{background:#fbfdff}
       <button data-view="conteudos">Conteúdos</button>
       <button data-view="acessos">Acessos</button>
     </nav>
-    <div class="sidebar-footer">SGCES v1.4.9</div>
+    <div class="sidebar-footer">SGCES v1.4.10</div>
   </aside>
 
   <main class="main">
@@ -1471,32 +1471,55 @@ tr:hover td{background:#fbfdff}
     return{x:cx+rx*100/16,y:cy+ry*100/9};
   }
 
-  function overviewSeatPosition(table,code,total){
+  function overviewSeatPosition(table,code,total,opts){
+    opts=opts||{};
     const format=String(table.FORMATO||'REDONDA').toUpperCase(),x=U.num(table.X,50),y=U.num(table.Y,50);
-    let w=U.num(table.W,format==='RETANGULAR'?18:10),h=format==='REDONDA'?w*16/9:U.num(table.H,format==='RETANGULAR'?8:10),pos;
+    const floorW=Math.max(1,U.num(opts.floorW,1600)),floorH=Math.max(1,U.num(opts.floorH,900)),scale=Math.max(.35,U.num(opts.scale,1));
+    const cardW=Math.max(16,U.num(opts.cardW,58)),cardH=Math.max(16,U.num(opts.cardH,21)),gap=Math.max(1,U.num(opts.gap,3));
+    const ratio=floorW/floorH;
+    const w=U.num(table.W,format==='RETANGULAR'?18:10),h=format==='REDONDA'?w*ratio:U.num(table.H,format==='RETANGULAR'?8:10);
+    const tw=w/100*floorW,th=h/100*floorH,cx=x/100*floorW,cy=y/100*floorH;
+    const baseCardW=cardW/scale,baseCardH=cardH/scale,baseGap=gap/scale;
+    let px=cx,py=cy;
+
     if(format==='REDONDA'){
       const i=U.num(String(code).replace('R',''),0),a=(-90)+(360*i/Math.max(1,total)),rad=a*Math.PI/180;
-      pos={x:x+Math.cos(rad)*(w/2+3.4),y:y+Math.sin(rad)*(h/2+4.1)};
+      const tableRadius=tw/2;
+      // O cartão fica praticamente encostado no círculo. A distância considera
+      // a própria profundidade do cartão em cada ângulo, evitando folga excessiva.
+      const radialHalf=Math.abs(Math.cos(rad))*baseCardW/2+Math.abs(Math.sin(rad))*baseCardH/2;
+      const d=tableRadius+radialHalf+baseGap;
+      px=cx+Math.cos(rad)*d;py=cy+Math.sin(rad)*d;
     }else if(format==='U'){
       const n=Math.max(1,U.num(String(code).replace('U',''),1)),baseCount=Math.max(1,Math.min(total,U.num(table.U_CABECEIRA_QTD,5)));
       if(n<=baseCount){
-        const side=Math.ceil((n-1)/2),dir=n===1?0:(n%2===0?1:-1),step=Math.min(3.8,Math.max(1.8,w/Math.max(4,baseCount)));
-        pos={x:x+dir*side*step,y:y+h/2+3.5};
+        const side=Math.ceil((n-1)/2),dir=n===1?0:(n%2===0?1:-1),maxSide=Math.max(1,Math.ceil((baseCount-1)/2));
+        const inset=Math.max(baseCardW/2+baseGap,8/scale),step=Math.max(1,(tw/2-inset)/maxSide);
+        px=cx+dir*side*step;py=cy+th/2+baseCardH/2+baseGap;
       }else{
         const k=n-baseCount,internal=U.yes(table.U_CADEIRAS_INTERNAS),per=internal?4:2,level=Math.floor((k-1)/per),slot=(k-1)%per,levels=Math.max(1,Math.ceil((total-baseCount)/per));
-        const yy=y+h/2-(level+1)*(h/(levels+1));
-        if(internal){const xs=[x+w/2+3,x-w/2-3,x+w/2-2.3,x-w/2+2.3];pos={x:xs[slot],y:yy};}
-        else pos={x:slot===0?x+w/2+3:x-w/2-3,y:yy};
+        const yInset=Math.max(baseCardH/2+baseGap,8/scale),usableH=Math.max(1,th-2*yInset);
+        py=cy+th/2-yInset-(level+.5)*(usableH/levels);
+        if(internal){
+          const outside=tw/2+baseCardW/2+baseGap,inside=Math.max(baseCardW/2+baseGap,tw/2-baseCardW/2-baseGap);
+          const xs=[cx+outside,cx-outside,cx+inside,cx-inside];px=xs[slot];
+        }else px=slot===0?cx+tw/2+baseCardW/2+baseGap:cx-tw/2-baseCardW/2-baseGap;
       }
-    }else if(code==='L')pos={x:x-w/2-3.5,y};
-    else if(code==='R')pos={x:x+w/2+3.5,y};
-    else{
+    }else if(code==='L'){
+      px=cx-tw/2-baseCardW/2-baseGap;py=cy;
+    }else if(code==='R'){
+      px=cx+tw/2+baseCardW/2+baseGap;py=cy;
+    }else{
       const heads=U.yes(table.CABECEIRAS),side=total-(heads?2:0),top=Math.ceil(side/2),bottom=Math.floor(side/2);
-      if(String(code).startsWith('T')){const i=U.num(String(code).slice(1),0);pos={x:top<=1?x:x-w/2+2+i*((w-4)/(top-1)),y:y-h/2-3.2};}
-      else if(String(code).startsWith('B')){const i=U.num(String(code).slice(1),0);pos={x:bottom<=1?x:x-w/2+2+i*((w-4)/(bottom-1)),y:y+h/2+3.2};}
-      else pos={x,y:y-h/2-3.2};
+      if(String(code).startsWith('T')){
+        const i=U.num(String(code).slice(1),0),inset=Math.max(baseCardW/2+baseGap,8/scale),left=cx-tw/2+inset,right=cx+tw/2-inset;
+        px=top<=1?cx:left+i*((right-left)/(top-1));py=cy-th/2-baseCardH/2-baseGap;
+      }else if(String(code).startsWith('B')){
+        const i=U.num(String(code).slice(1),0),inset=Math.max(baseCardW/2+baseGap,8/scale),left=cx-tw/2+inset,right=cx+tw/2-inset;
+        px=bottom<=1?cx:left+i*((right-left)/(bottom-1));py=cy+th/2+baseCardH/2+baseGap;
+      }else{px=cx;py=cy-th/2-baseCardH/2-baseGap;}
     }
-    return rotateOverviewPoint_(table,pos);
+    return rotateOverviewPoint_(table,{x:px/floorW*100,y:py/floorH*100});
   }
 
   let overviewPopoverEl=null,overviewPopoverHideTimer=null,overviewPopoverPinned=false;
@@ -1547,14 +1570,14 @@ tr:hover td{background:#fbfdff}
     if(!root)return;
     closeCerimonialOverviewPopover(true);
     const e=state.data.event||{},bg=U.driveImage(e.CROQUI_URL||'');
-    root.innerHTML=`<div class="floor-toolbar"><div class="floor-zoom-controls"><button class="btn btn-sm" data-ov-out>−</button><button class="btn btn-sm" data-ov-reset>100%</button><button class="btn btn-sm" data-ov-in>+</button></div><span class="floor-pan-hint">A composição aparece automaticamente quando houver espaço entre os cartões. Ao ampliar, os nomes ganham espaço e ficam progressivamente mais completos. Passe o mouse ou clique na mesa para abrir a disposição completa.</span></div><div class="cerimonial-overview-wrap"><div class="cerimonial-overview-floor" id="cerimonialOverviewFloor"></div></div><div class="overview-legend"><span>Verde: anfitrião</span><span>Azul: maior precedência da mesa</span><span>Cartões só aparecem quando não houver sobreposição</span><span>Passe o mouse ou clique na mesa para consultar tudo</span></div>`;
+    root.innerHTML=`<div class="floor-toolbar"><div class="floor-zoom-controls"><button class="btn btn-sm" data-ov-out>−</button><button class="btn btn-sm" data-ov-reset>100%</button><button class="btn btn-sm" data-ov-in>+</button></div><span class="floor-pan-hint">A composição aparece automaticamente sempre que os cartões couberem sem se sobrepor, em qualquer formato de mesa. Os cartões ficam próximos à mesa e os nomes ganham espaço conforme o zoom. Passe o mouse ou clique na mesa para abrir a disposição completa.</span></div><div class="cerimonial-overview-wrap"><div class="cerimonial-overview-floor" id="cerimonialOverviewFloor"></div></div><div class="overview-legend"><span>Verde: anfitrião</span><span>Azul: maior precedência da mesa</span><span>Regra geral: cartões aparecem sempre que couberem sem sobreposição</span><span>Passe o mouse ou clique na mesa para consultar tudo</span></div>`;
     const wrap=root.querySelector('.cerimonial-overview-wrap'),floor=root.querySelector('#cerimonialOverviewFloor');
     if(bg){floor.style.backgroundImage=`url("${String(bg).replace(/"/g,'%22')}")`;floor.style.backgroundSize='contain';floor.style.backgroundPosition='center';floor.style.backgroundRepeat='no-repeat';}
     const activeGuests=(state.data.guests||[]).filter(g=>U.normalize(g.RSVP)!=='nao comparecera');
     const groups=[];
 
     tables.forEach(t=>{
-      const format=String(t.FORMATO||'REDONDA').toUpperCase(),shape=document.createElement('div'),w=U.num(t.W,format==='RETANGULAR'?18:10),h=format==='REDONDA'?w*16/9:U.num(t.H,format==='RETANGULAR'?8:10);
+      const format=String(t.FORMATO||'REDONDA').toUpperCase(),shape=document.createElement('div'),w=U.num(t.W,format==='RETANGULAR'?18:10),ratio=(floor.clientWidth||1600)/(floor.clientHeight||900),h=format==='REDONDA'?w*ratio:U.num(t.H,format==='RETANGULAR'?8:10);
       shape.className='overview-table-shape '+(format==='REDONDA'?'round':format==='U'?'u':'rect')+' clickable';
       shape.style.left=U.num(t.X,50)+'%';shape.style.top=U.num(t.Y,50)+'%';shape.style.width=w+'%';shape.style.height=h+'%';shape.style.transform=`translate(-50%,-50%) rotate(${U.num(t.ROTACAO,0)}deg)`;
       const at=activeGuests.filter(g=>String(g.MESA_ID)===String(t.ID_MESA)).sort(U.byPrecedence),unseated=at.filter(g=>!g.ASSENTO).length;
@@ -1568,16 +1591,15 @@ tr:hover td{background:#fbfdff}
 
       const major=at.find(g=>U.normalize(g.NIVEL)==='autoridade')||at[0]||null,total=Math.max(1,U.num(t.CAPACIDADE),at.length),cards=[];
       at.filter(g=>g.ASSENTO).forEach(g=>{
-        const code=String(g.ASSENTO),pos=overviewSeatPosition(t,code,total),orientation=U.seatOrientation(t,code,total),el=document.createElement('div');
+        const code=String(g.ASSENTO),orientation=U.seatOrientation(t,code,total),el=document.createElement('div');
         const host=String(g.ID_CONVIDADO)===String(t.ANFITRIAO_ID||e.ANFITRIAO_ID||''),rank1=major&&String(g.ID_CONVIDADO)===String(major.ID_CONVIDADO);
         const label=[g.POSTO_GRAD,g.NOME_GUERRA||g.NOME_COMPLETO].filter(Boolean).join(' ');
         el.className='overview-inline-seat '+orientation+(host?' host':'')+(rank1?' rank1':'');
-        el.style.left=pos.x+'%';el.style.top=pos.y+'%';
-        el.dataset.orientation=orientation;el.dataset.label=label;el.title=label;
+        el.dataset.orientation=orientation;el.dataset.label=label;el.dataset.code=code;el.dataset.total=String(total);el.dataset.priority=host?'0':rank1?'1':'2';el.title=label;
         el.innerHTML=`<span class="overview-inline-seat-text">${U.esc(label)}</span>`;
         floor.appendChild(el);cards.push(el);
       });
-      groups.push({table:t,shape,cards,priority:(U.yes(t.PRINCIPAL)?0:1)});
+      groups.push({table:t,shape,cards,w,format,priority:(U.yes(t.PRINCIPAL)?0:1)});
     });
 
     const rectsOverlap=(a,b,gap)=>!(a.right+gap<=b.left||b.right+gap<=a.left||a.bottom+gap<=b.top||b.bottom+gap<=a.top);
@@ -1588,23 +1610,42 @@ tr:hover td{background:#fbfdff}
       const inv=1/Math.max(.001,scale),vertical=el.dataset.orientation==='vertical';
       el.style.setProperty('--overview-seat-label-length',labelLength+'px');
       if(vertical){
-        el.style.width=Math.max(21,Math.min(27,21+(scale-1)*2))+'px';
+        el.style.width=Math.max(20,Math.min(25,20+(scale-1)*1.6))+'px';
         el.style.height=labelLength+'px';
       }else{
         el.style.width=labelLength+'px';
-        el.style.height=Math.max(20,Math.min(24,20+(scale-1)*1.5))+'px';
+        el.style.height=Math.max(19,Math.min(23,19+(scale-1)*1.25))+'px';
       }
-      el.style.fontSize=Math.max(8.4,Math.min(10.2,8.4+(scale-1)*.8))+'px';
+      el.style.fontSize=Math.max(8.1,Math.min(10,8.1+(scale-1)*.7))+'px';
       el.style.transform=`translate(-50%,-50%) scale(${inv})`;
+    }
+
+    function positionCard(el,group,scale){
+      const cardW=parseFloat(el.style.width)||58,cardH=parseFloat(el.style.height)||21;
+      const p=overviewSeatPosition(group.table,el.dataset.code,U.num(el.dataset.total,1),{floorW:floor.clientWidth||1600,floorH:floor.clientHeight||900,scale,cardW,cardH,gap:3});
+      el.style.left=p.x+'%';el.style.top=p.y+'%';
+    }
+
+    function candidateRects(group,width,scale){
+      group.cards.forEach(el=>{styleCardForWidth(el,width,scale);positionCard(el,group,scale);});
+      return group.cards.map(el=>expandedRect(el.getBoundingClientRect(),1.5));
+    }
+
+    function updateRoundShapes(){
+      const ratio=(floor.clientWidth||1600)/(floor.clientHeight||900);
+      groups.forEach(g=>{if(g.format==='REDONDA')g.shape.style.height=(g.w*ratio)+'%';});
     }
 
     function updateInlineCompositions(scale,force){
       if(!force&&Math.abs(scale-lastScale)<.015)return;
-      lastScale=scale;
-      const target=Math.max(58,Math.min(166,58+(scale-1)*48));
+      lastScale=scale;updateRoundShapes();
+      // Regra única para REDONDA, RETANGULAR e U: mostrar o máximo possível sem sobreposição.
+      // O nome cresce progressivamente com o zoom; no mínimo, usa ellipsis em cartão curto.
+      const target=Math.max(46,Math.min(172,46+(scale-1)*54));
+      const minWidth=36;
       const widths=[];
-      for(let w=target;w>=58;w-=10)widths.push(Math.round(w));
-      if(widths[widths.length-1]!==58)widths.push(58);
+      for(let w=target;w>=minWidth;w-=8)widths.push(Math.round(w));
+      if(widths[widths.length-1]!==minWidth)widths.push(minWidth);
       groups.forEach(g=>g.cards.forEach(el=>{el.classList.remove('visible');el.style.visibility='hidden';el.style.opacity='0';}));
       const accepted=[];
       const ordered=groups.slice().sort((a,b)=>a.priority-b.priority||U.num(a.table.Y)-U.num(b.table.Y)||U.num(a.table.X)-U.num(b.table.X));
@@ -1612,9 +1653,9 @@ tr:hover td{background:#fbfdff}
       ordered.forEach(group=>{
         if(!group.cards.length)return;
         let chosen=null,chosenRects=null;
+        // Primeiro tenta exibir a composição inteira da mesa com uma largura comum.
         for(const width of widths){
-          group.cards.forEach(el=>styleCardForWidth(el,width,scale));
-          const rs=group.cards.map(el=>expandedRect(el.getBoundingClientRect(),2.5));
+          const rs=candidateRects(group,width,scale);
           let bad=false;
           for(let i=0;i<rs.length&&!bad;i++){
             for(let j=i+1;j<rs.length;j++){if(rectsOverlap(rs[i],rs[j],0)){bad=true;break;}}
@@ -1623,9 +1664,27 @@ tr:hover td{background:#fbfdff}
           if(!bad){chosen=width;chosenRects=rs;break;}
         }
         if(chosen!==null){
-          group.cards.forEach(el=>{styleCardForWidth(el,chosen,scale);el.style.visibility='visible';el.style.opacity='1';el.classList.add('visible');});
-          accepted.push(...chosenRects);
+          group.cards.forEach(el=>{styleCardForWidth(el,chosen,scale);positionCard(el,group,scale);el.style.visibility='visible';el.style.opacity='1';el.classList.add('visible');});
+          accepted.push(...chosenRects);return;
         }
+
+        // Se apenas alguns lugares colidirem com outra mesa, não omite a mesa inteira.
+        // Exibe individualmente cada cartão que couber, priorizando anfitrião e maior precedência.
+        const localAccepted=[];
+        const cards=group.cards.slice().sort((a,b)=>U.num(a.dataset.priority,2)-U.num(b.dataset.priority,2));
+        cards.forEach(el=>{
+          let fitted=null,rect=null;
+          for(const width of widths){
+            styleCardForWidth(el,width,scale);positionCard(el,group,scale);
+            const r=expandedRect(el.getBoundingClientRect(),1.5);
+            const bad=accepted.some(ar=>rectsOverlap(r,ar,0))||localAccepted.some(ar=>rectsOverlap(r,ar,0));
+            if(!bad){fitted=width;rect=r;break;}
+          }
+          if(fitted!==null){
+            styleCardForWidth(el,fitted,scale);positionCard(el,group,scale);el.style.visibility='visible';el.style.opacity='1';el.classList.add('visible');
+            accepted.push(rect);localAccepted.push(rect);
+          }
+        });
       });
     }
 
