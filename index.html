@@ -207,14 +207,12 @@ tr:hover td{background:#fbfdff}
 .cerimonial-action-cluster+.cerimonial-action-cluster{padding-left:10px;border-left:1px solid var(--line)}
 .cerimonial-action-groups{display:grid;gap:8px;margin:10px 0 12px}
 .cerimonial-action-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.cerimonial-action-label{min-width:84px;font-size:.72rem;font-weight:800;color:#667085;text-transform:uppercase;letter-spacing:.045em}
 .cerimonial-action-buttons{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 @media(max-width:760px){
   .cerimonial-header-actions{justify-content:flex-start;width:100%}
   .cerimonial-action-cluster{flex-wrap:wrap}
   .cerimonial-action-cluster+.cerimonial-action-cluster{border-left:0;padding-left:0}
   .cerimonial-action-row{align-items:flex-start}
-  .cerimonial-action-label{width:100%;min-width:0}
   .overview-table-popover{width:calc(100vw - 16px);max-height:82vh}
 }
 .photo-upload-box{display:grid;grid-template-columns:86px 1fr;gap:12px;align-items:center;border:1px dashed #cbd5e1;border-radius:12px;padding:10px}
@@ -325,7 +323,7 @@ tr:hover td{background:#fbfdff}
       <button data-view="conteudos">Conteúdos</button>
       <button data-view="acessos">Acessos</button>
     </nav>
-    <div class="sidebar-footer">SGCES v1.4.10</div>
+    <div class="sidebar-footer">SGCES v1.4.11</div>
   </aside>
 
   <main class="main">
@@ -1570,7 +1568,7 @@ tr:hover td{background:#fbfdff}
     if(!root)return;
     closeCerimonialOverviewPopover(true);
     const e=state.data.event||{},bg=U.driveImage(e.CROQUI_URL||'');
-    root.innerHTML=`<div class="floor-toolbar"><div class="floor-zoom-controls"><button class="btn btn-sm" data-ov-out>−</button><button class="btn btn-sm" data-ov-reset>100%</button><button class="btn btn-sm" data-ov-in>+</button></div><span class="floor-pan-hint">A composição aparece automaticamente sempre que os cartões couberem sem se sobrepor, em qualquer formato de mesa. Os cartões ficam próximos à mesa e os nomes ganham espaço conforme o zoom. Passe o mouse ou clique na mesa para abrir a disposição completa.</span></div><div class="cerimonial-overview-wrap"><div class="cerimonial-overview-floor" id="cerimonialOverviewFloor"></div></div><div class="overview-legend"><span>Verde: anfitrião</span><span>Azul: maior precedência da mesa</span><span>Regra geral: cartões aparecem sempre que couberem sem sobreposição</span><span>Passe o mouse ou clique na mesa para consultar tudo</span></div>`;
+    root.innerHTML=`<div class="floor-toolbar"><div class="floor-zoom-controls"><button class="btn btn-sm" data-ov-out>−</button><button class="btn btn-sm" data-ov-reset>100%</button><button class="btn btn-sm" data-ov-in>+</button></div><span class="floor-pan-hint">Passe o mouse ou clique na mesa para abrir a disposição completa.</span></div><div class="cerimonial-overview-wrap"><div class="cerimonial-overview-floor" id="cerimonialOverviewFloor"></div></div>`;
     const wrap=root.querySelector('.cerimonial-overview-wrap'),floor=root.querySelector('#cerimonialOverviewFloor');
     if(bg){floor.style.backgroundImage=`url("${String(bg).replace(/"/g,'%22')}")`;floor.style.backgroundSize='contain';floor.style.backgroundPosition='center';floor.style.backgroundRepeat='no-repeat';}
     const activeGuests=(state.data.guests||[]).filter(g=>U.normalize(g.RSVP)!=='nao comparecera');
@@ -1641,8 +1639,8 @@ tr:hover td{background:#fbfdff}
       lastScale=scale;updateRoundShapes();
       // Regra única para REDONDA, RETANGULAR e U: mostrar o máximo possível sem sobreposição.
       // O nome cresce progressivamente com o zoom; no mínimo, usa ellipsis em cartão curto.
-      const target=Math.max(46,Math.min(172,46+(scale-1)*54));
-      const minWidth=36;
+      const target=Math.max(88,Math.min(190,112+(scale-1)*58));
+      const minWidth=42;
       const widths=[];
       for(let w=target;w>=minWidth;w-=8)widths.push(Math.round(w));
       if(widths[widths.length-1]!==minWidth)widths.push(minWidth);
@@ -1652,24 +1650,10 @@ tr:hover td{background:#fbfdff}
 
       ordered.forEach(group=>{
         if(!group.cards.length)return;
-        let chosen=null,chosenRects=null;
-        // Primeiro tenta exibir a composição inteira da mesa com uma largura comum.
-        for(const width of widths){
-          const rs=candidateRects(group,width,scale);
-          let bad=false;
-          for(let i=0;i<rs.length&&!bad;i++){
-            for(let j=i+1;j<rs.length;j++){if(rectsOverlap(rs[i],rs[j],0)){bad=true;break;}}
-            if(!bad&&accepted.some(ar=>rectsOverlap(rs[i],ar,0)))bad=true;
-          }
-          if(!bad){chosen=width;chosenRects=rs;break;}
-        }
-        if(chosen!==null){
-          group.cards.forEach(el=>{styleCardForWidth(el,chosen,scale);positionCard(el,group,scale);el.style.visibility='visible';el.style.opacity='1';el.classList.add('visible');});
-          accepted.push(...chosenRects);return;
-        }
-
-        // Se apenas alguns lugares colidirem com outra mesa, não omite a mesa inteira.
-        // Exibe individualmente cada cartão que couber, priorizando anfitrião e maior precedência.
+        // Regra geral para qualquer formato: cada cartão tenta ocupar o maior espaço
+        // disponível sem tocar em outro cartão. Isso permite que U e RETANGULAR usem
+        // nomes muito mais completos quando existe espaço, em vez de herdar a menor
+        // largura necessária por outro lugar da mesma mesa.
         const localAccepted=[];
         const cards=group.cards.slice().sort((a,b)=>U.num(a.dataset.priority,2)-U.num(b.dataset.priority,2));
         cards.forEach(el=>{
@@ -1681,7 +1665,8 @@ tr:hover td{background:#fbfdff}
             if(!bad){fitted=width;rect=r;break;}
           }
           if(fitted!==null){
-            styleCardForWidth(el,fitted,scale);positionCard(el,group,scale);el.style.visibility='visible';el.style.opacity='1';el.classList.add('visible');
+            styleCardForWidth(el,fitted,scale);positionCard(el,group,scale);
+            el.style.visibility='visible';el.style.opacity='1';el.classList.add('visible');
             accepted.push(rect);localAccepted.push(rect);
           }
         });
@@ -1728,7 +1713,7 @@ tr:hover td{background:#fbfdff}
     const info=t&&!U.yes(t.PRINCIPAL)&&major?`<div class="small" style="margin-top:8px"><strong>Maior precedência:</strong> ${U.esc([major.POSTO_GRAD,major.NOME_GUERRA||major.NOME_COMPLETO].filter(Boolean).join(' '))}${mainDir?` • Mesa principal ${U.esc(mainDir)}`:''}</div>`:'';
     const autoOn=U.yes((state.data.event||{}).AUTO_AUTORIDADES);
     const headerActions=`<div class="cerimonial-header-actions"><div class="cerimonial-action-cluster"><button class="btn" data-auth-config>Distribuição automática</button>${autoOn?'<button class="btn" data-redistribute>Redistribuir agora</button>':''}</div><div class="cerimonial-action-cluster"><button class="btn" data-print-layout>Imprimir</button></div></div>`;
-    c.innerHTML=heading('Cerimonial','Distribuição visual das mesas e dos lugares.',headerActions)+`<div class="card overview-card"><div class="section-actions"><div><h3 style="margin:0">Visão geral do croqui</h3><div class="small muted">Consulta opcional das mesas planejadas e dos lugares já definidos.</div></div><div class="actions"><button class="btn btn-sm ${state.cerimonialOverviewOpen?'btn-soft':''}" data-toggle-overview>${state.cerimonialOverviewOpen?'Ocultar visão geral':'Mostrar visão geral'}</button></div></div>${state.cerimonialOverviewOpen?'<div id="cerimonialOverview"></div>':'<div class="overview-overflow-note" style="margin-top:8px">Abra a visão geral somente quando precisar conferir o conjunto do salão. No detalhe abaixo continuam disponíveis todas as ações que já estão funcionando.</div>'}</div><div class="cerimonial-grid"><div class="card"><h3>Mesas planejadas</h3><div class="cerimonial-table-list">${tables.length?tables.map(x=>`<button class="btn ${String(x.ID_MESA)===String(state.selectedCerimonialTable)?'btn-soft':''}" style="width:100%;margin-bottom:7px;justify-content:flex-start;white-space:normal;text-align:left" data-ct="${U.esc(x.ID_MESA)}">${U.esc(x.NOME)} • ${U.esc(x.FORMATO)} <span class="badge ${U.yes(x.USA_ICA)?'info':''}" style="margin-left:auto">Padrão ${U.yes(x.USA_ICA)?'SIM':'NÃO'}</span></button>`).join(''):'<p class="muted">Nenhuma mesa planejada.</p>'}</div></div><div class="card">${t?`<div class="section-actions"><div><h3 style="margin:0">${U.esc(t.NOME)}</h3><div class="small muted">${seated.length}/${U.num(t.CAPACIDADE)} pessoas • ${U.esc(t.FORMATO)}</div>${info}</div><div class="actions"><button class="btn btn-sm" data-toggle-standard>Composição padrão: ${U.yes(t.USA_ICA)?'SIM':'NÃO'}</button><button class="btn btn-sm" data-edit-table>Editar mesa</button></div></div><div class="cerimonial-action-groups"><div class="cerimonial-action-row"><span class="cerimonial-action-label">Composição</span><div class="cerimonial-action-buttons"><button class="btn" data-members>Selecionar pessoas</button>${U.yes(t.USA_ICA)?'<button class="btn btn-primary" data-compose>Aplicar composição padrão</button>':''}<button class="btn" data-clear>Limpar assentos</button></div></div><div class="cerimonial-action-row"><span class="cerimonial-action-label">Lugares</span><div class="cerimonial-action-buttons"><button class="btn ${state.manualSeatMode?'btn-soft':''}" data-manual>${state.manualSeatMode?'Encerrar edição de lugares':'Editar lugares manualmente'}</button>${state.manualSeatGuestId?'<button class="btn btn-danger" data-unseat>Retirar selecionado do assento</button>':''}</div></div></div>${state.manualSeatMode?'<div class="manual-seat-hint">Arraste um nome para outro assento. Em celular ou tablet, toque primeiro no nome e depois no assento desejado. Se o destino estiver ocupado, os dois trocam de lugar.</div>':''}<div class="seating-stage" id="seatingStage"></div><div id="unseatedTray"></div>`:'<p class="muted">Selecione uma mesa.</p>'}</div></div>`;
+    c.innerHTML=heading('Cerimonial','Distribuição visual das mesas e dos lugares.',headerActions)+`<div class="card overview-card"><div class="section-actions"><div><h3 style="margin:0">Visão geral do croqui</h3><div class="small muted">Consulta opcional das mesas planejadas e dos lugares já definidos.</div></div><div class="actions"><button class="btn btn-sm ${state.cerimonialOverviewOpen?'btn-soft':''}" data-toggle-overview>${state.cerimonialOverviewOpen?'Ocultar visão geral':'Mostrar visão geral'}</button></div></div>${state.cerimonialOverviewOpen?'<div id="cerimonialOverview"></div>':''}</div><div class="cerimonial-grid"><div class="card"><h3>Mesas planejadas</h3><div class="cerimonial-table-list">${tables.length?tables.map(x=>`<button class="btn ${String(x.ID_MESA)===String(state.selectedCerimonialTable)?'btn-soft':''}" style="width:100%;margin-bottom:7px;justify-content:flex-start;white-space:normal;text-align:left" data-ct="${U.esc(x.ID_MESA)}">${U.esc(x.NOME)} • ${U.esc(x.FORMATO)} <span class="badge ${U.yes(x.USA_ICA)?'info':''}" style="margin-left:auto">Padrão ${U.yes(x.USA_ICA)?'SIM':'NÃO'}</span></button>`).join(''):'<p class="muted">Nenhuma mesa planejada.</p>'}</div></div><div class="card">${t?`<div class="section-actions"><div><h3 style="margin:0">${U.esc(t.NOME)}</h3><div class="small muted">${seated.length}/${U.num(t.CAPACIDADE)} pessoas • ${U.esc(t.FORMATO)}</div>${info}</div><div class="actions"><button class="btn btn-sm" data-toggle-standard>Composição padrão: ${U.yes(t.USA_ICA)?'SIM':'NÃO'}</button><button class="btn btn-sm" data-edit-table>Editar mesa</button></div></div><div class="cerimonial-action-groups"><div class="cerimonial-action-row"><div class="cerimonial-action-buttons"><button class="btn" data-members>Selecionar pessoas</button>${U.yes(t.USA_ICA)?'<button class="btn btn-primary" data-compose>Aplicar composição padrão</button>':''}<button class="btn" data-clear>Limpar assentos</button></div></div><div class="cerimonial-action-row"><div class="cerimonial-action-buttons"><button class="btn ${state.manualSeatMode?'btn-soft':''}" data-manual>${state.manualSeatMode?'Encerrar edição de lugares':'Editar lugares manualmente'}</button>${state.manualSeatGuestId?'<button class="btn btn-danger" data-unseat>Retirar selecionado do assento</button>':''}</div></div></div>${state.manualSeatMode?'<div class="manual-seat-hint">Arraste um nome para outro assento. Em celular ou tablet, toque primeiro no nome e depois no assento desejado. Se o destino estiver ocupado, os dois trocam de lugar.</div>':''}<div class="seating-stage" id="seatingStage"></div><div id="unseatedTray"></div>`:'<p class="muted">Selecione uma mesa.</p>'}</div></div>`;
     if(state.cerimonialOverviewOpen)renderCerimonialOverview(U.$('#cerimonialOverview',c),tables);
     c.querySelector('[data-toggle-overview]')?.addEventListener('click',()=>{closeCerimonialOverviewPopover(true);state.cerimonialOverviewOpen=!state.cerimonialOverviewOpen;renderCerimonial();});
     c.querySelectorAll('[data-ct]').forEach(b=>b.onclick=()=>{closeCerimonialOverviewPopover(true);state.selectedCerimonialTable=b.dataset.ct;state.manualSeatGuestId='';renderCerimonial();});
