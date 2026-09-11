@@ -184,9 +184,7 @@ tr:hover td{background:#fbfdff}
 .overview-inline-seat.host{border-color:#0f766e;background:#ecfdf5}
 .overview-inline-seat.rank1{border-color:#2563eb;background:#eff6ff}
 .overview-inline-seat.horizontal{height:21px;padding:2px 5px}
-.overview-inline-seat.vertical{width:23px;padding:2px 1px}
 .overview-inline-seat .overview-inline-seat-text{display:block;width:100%;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center}
-.overview-inline-seat.vertical .overview-inline-seat-text{transform:rotate(-90deg);transform-origin:center;width:var(--overview-seat-label-length,70px);max-width:none}
 .overview-legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;font-size:.78rem;color:var(--muted)}
 .overview-overflow-note{font-size:.76rem;color:var(--muted)}
 
@@ -323,7 +321,7 @@ tr:hover td{background:#fbfdff}
       <button data-view="conteudos">Conteúdos</button>
       <button data-view="acessos">Acessos</button>
     </nav>
-    <div class="sidebar-footer">SGCES v1.4.11</div>
+    <div class="sidebar-footer">SGCES v1.4.12</div>
   </aside>
 
   <main class="main">
@@ -1589,7 +1587,7 @@ tr:hover td{background:#fbfdff}
 
       const major=at.find(g=>U.normalize(g.NIVEL)==='autoridade')||at[0]||null,total=Math.max(1,U.num(t.CAPACIDADE),at.length),cards=[];
       at.filter(g=>g.ASSENTO).forEach(g=>{
-        const code=String(g.ASSENTO),orientation=U.seatOrientation(t,code,total),el=document.createElement('div');
+        const code=String(g.ASSENTO),orientation='horizontal',el=document.createElement('div');
         const host=String(g.ID_CONVIDADO)===String(t.ANFITRIAO_ID||e.ANFITRIAO_ID||''),rank1=major&&String(g.ID_CONVIDADO)===String(major.ID_CONVIDADO);
         const label=[g.POSTO_GRAD,g.NOME_GUERRA||g.NOME_COMPLETO].filter(Boolean).join(' ');
         el.className='overview-inline-seat '+orientation+(host?' host':'')+(rank1?' rank1':'');
@@ -1605,15 +1603,12 @@ tr:hover td{background:#fbfdff}
     let lastScale=-1;
 
     function styleCardForWidth(el,labelLength,scale){
-      const inv=1/Math.max(.001,scale),vertical=el.dataset.orientation==='vertical';
-      el.style.setProperty('--overview-seat-label-length',labelLength+'px');
-      if(vertical){
-        el.style.width=Math.max(20,Math.min(25,20+(scale-1)*1.6))+'px';
-        el.style.height=labelLength+'px';
-      }else{
-        el.style.width=labelLength+'px';
-        el.style.height=Math.max(19,Math.min(23,19+(scale-1)*1.25))+'px';
-      }
+      const inv=1/Math.max(.001,scale);
+      // Na visão geral, todos os cartões ficam horizontais. A orientação vertical
+      // funciona no detalhe da mesa, mas comprime o texto quando o croqui inteiro
+      // está reduzido. Aqui a prioridade é leitura e aproveitamento do espaço.
+      el.style.width=labelLength+'px';
+      el.style.height=Math.max(19,Math.min(23,19+(scale-1)*1.25))+'px';
       el.style.fontSize=Math.max(8.1,Math.min(10,8.1+(scale-1)*.7))+'px';
       el.style.transform=`translate(-50%,-50%) scale(${inv})`;
     }
