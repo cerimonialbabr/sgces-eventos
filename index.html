@@ -36,6 +36,7 @@ img{max-width:100%;display:block}
 .app-shell{min-height:100vh;display:grid;grid-template-columns:260px 1fr}
 .sidebar{background:#102d52;color:#fff;padding:22px 16px;position:sticky;top:0;height:100vh;overflow:auto}
 .brand{padding:6px 10px 22px;border-bottom:1px solid rgba(255,255,255,.14);margin-bottom:16px}
+.brand-logo{display:block;width:100%;max-width:210px;height:auto;object-fit:contain;margin:0 0 8px}
 .brand h1{font-size:2.05rem;line-height:1.05;margin:0 0 7px;font-weight:800;letter-spacing:.02em}
 .brand p{margin:0;color:#cdd9e8;font-size:.82rem;line-height:1.35}
 .nav{display:grid;gap:5px}
@@ -205,7 +206,7 @@ tr:hover td{background:#fbfdff}
   .sidebar{position:relative;height:auto;padding:14px}
   .nav{grid-template-columns:repeat(4,minmax(0,1fr));overflow:auto}
   .nav button{text-align:center;font-size:.8rem;padding:9px 7px}
-  .brand{padding:3px 5px 14px}.brand h1{font-size:1.65rem}
+  .brand{padding:3px 5px 14px}.brand-logo{max-width:190px}.brand h1{font-size:1.65rem}
   .topbar{position:relative;padding:10px 14px;align-items:flex-start;flex-direction:column}
   .content{padding:16px}
   .page-heading h2{font-size:1.9rem}
@@ -229,7 +230,7 @@ tr:hover td{background:#fbfdff}
 <div class="app-shell">
   <aside class="sidebar">
     <div class="brand">
-      <h1>SGCES</h1>
+      <img class="brand-logo" src="icone_sgces.png" alt="SGCES">
       <p>Sistema de Gerenciamento de Cerimonial em Eventos Sociais</p>
     </div>
     <nav class="nav" id="mainNav">
@@ -243,7 +244,7 @@ tr:hover td{background:#fbfdff}
       <button data-view="conteudos">Conteúdos</button>
       <button data-view="acessos">Acessos</button>
     </nav>
-    <div class="sidebar-footer">SGCES v1.4.3</div>
+    <div class="sidebar-footer">SGCES v1.4.4</div>
   </aside>
 
   <main class="main">
@@ -595,10 +596,10 @@ tr:hover td{background:#fbfdff}
     const detectedTotal=explicitSeats.reduce((mx,code)=>{
       if(/^R\d+$/.test(code)) return Math.max(mx,parseInt(code.slice(1),10)+1);
       if(/^U\d+$/.test(code)) return Math.max(mx,parseInt(code.slice(1),10));
-      if(/^[TB]\d+$/.test(code)) return Math.max(mx,U.num(table.CAPACIDADE,0));
+      if(/^[TB]\d+$/.test(code)) return Math.max(mx,num(table.CAPACIDADE,0));
       return mx;
     },0);
-    const total=Math.max(1,U.num(table.CAPACIDADE,0),detectedTotal,(guests||[]).length||0);
+    const total=Math.max(1,num(table.CAPACIDADE,0),detectedTotal,(guests||[]).length||0);
     const assigned={};
     (guests||[]).filter(g=>g.ASSENTO).forEach(g=>{assigned[String(g.ASSENTO)]=g;});
     seatCodesForTable(table,total).forEach(code=>{
@@ -609,8 +610,8 @@ tr:hover td{background:#fbfdff}
       s.style.left=p.x+'px';
       s.style.top=p.y+'px';
       if(!g){
-        s.title='Assento livre';
-        s.innerHTML='<div class="seat-vertical" style="width:108px;font-size:.68rem;color:#94a3b8">LIVRE</div>';
+        s.title='Assento vazio';
+        s.innerHTML='<div class="seat-vertical" style="width:108px"></div>';
         canvas.appendChild(s);
         return;
       }
@@ -1259,12 +1260,18 @@ tr:hover td{background:#fbfdff}
     const mainDir=t?directionToPrincipal(t):'';
     const major=seated.find(g=>U.normalize(g.NIVEL)==='autoridade')||seated[0]||null;
     const info=t&&!U.yes(t.PRINCIPAL)&&major?`<div class="small" style="margin-top:8px"><strong>Maior precedência:</strong> ${U.esc([major.POSTO_GRAD,major.NOME_GUERRA||major.NOME_COMPLETO].filter(Boolean).join(' '))}${mainDir?` • Mesa principal ${U.esc(mainDir)}`:''}</div>`:'';
-    c.innerHTML=heading('Cerimonial','',t?`<button class="btn" data-clear>Limpar assentos</button><button class="btn btn-primary" data-compose>Compor pela ICA</button>`:'')+`
+    const autoOn=U.yes((state.data.event||{}).AUTO_AUTORIDADES);
+    const headerActions=`<button class="btn" data-auth-config>Distribuição de autoridades</button>${autoOn?'<button class="btn" data-redistribute>Redistribuir agora</button>':''}${t?'<button class="btn" data-clear>Limpar assentos</button><button class="btn btn-primary" data-compose>Compor pela ICA</button>':''}`;
+    c.innerHTML=heading('Cerimonial','',headerActions)+`
       <div class="grid grid-2" style="grid-template-columns:280px 1fr">
         <div class="card"><h3>Mesas com ICA</h3>${tables.length?tables.map(x=>`<button class="btn ${String(x.ID_MESA)===String(state.selectedCerimonialTable)?'btn-soft':''}" style="width:100%;margin-bottom:7px;justify-content:flex-start;white-space:normal;text-align:left" data-ct="${U.esc(x.ID_MESA)}">${U.esc(x.NOME)} • ${U.esc(x.FORMATO)}</button>`).join(''):'<p class="muted">Nenhuma mesa com ICA.</p>'}</div>
         <div class="card">${t?`<div class="section-actions"><div><h3 style="margin:0">${U.esc(t.NOME)}</h3><div class="small muted">${seated.length}/${U.num(t.CAPACIDADE)} pessoas</div>${info}</div><button class="btn btn-sm" data-edit-table>Editar mesa</button></div><div class="seating-stage" id="seatingStage"></div>`:'<p class="muted">Selecione uma mesa.</p>'}</div>
       </div>`;
     c.querySelectorAll('[data-ct]').forEach(b=>b.onclick=()=>{state.selectedCerimonialTable=b.dataset.ct;renderCerimonial();});
+    const authConfig=c.querySelector('[data-auth-config]');
+    if(authConfig)authConfig.onclick=()=>showView('mesas');
+    const redistribute=c.querySelector('[data-redistribute]');
+    if(redistribute)redistribute.onclick=()=>runBusy(async()=>{const r=await A.call('redistributeAuthorities',{eventId:state.eventId},70000);await loadEvent();renderCerimonial();U.toast(`${r.usedTables||0} mesa(s) destinadas às autoridades.`,'success');},'Distribuindo');
     if(t){
       U.renderSeating(U.$('#seatingStage',c),t,seated);
       c.querySelector('[data-edit-table]').onclick=()=>tableModal(t);
