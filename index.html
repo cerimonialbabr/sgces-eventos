@@ -179,6 +179,14 @@ tr:hover td{background:#fbfdff}
 .overview-table-name{position:relative;z-index:2;background:rgba(255,255,255,.9);padding:2px 5px;border-radius:5px;font-size:clamp(8px,.72vw,11px);max-width:92%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;pointer-events:none}
 .overview-table-meta{display:block;font-size:.66em;font-weight:750;color:#5b6b7f;margin-top:1px}
 .overview-table-shape.clickable{cursor:pointer}
+.overview-inline-seat{position:absolute;z-index:4;box-sizing:border-box;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.96);border:1px solid #cbd5e1;border-radius:5px;box-shadow:0 2px 5px rgba(15,23,42,.08);font-weight:800;font-size:9px;line-height:1;color:#1f2937;overflow:hidden;pointer-events:none;opacity:0;visibility:hidden;transform-origin:center center;transition:opacity .12s ease,border-color .12s ease,background .12s ease}
+.overview-inline-seat.visible{opacity:1;visibility:visible}
+.overview-inline-seat.host{border-color:#0f766e;background:#ecfdf5}
+.overview-inline-seat.rank1{border-color:#2563eb;background:#eff6ff}
+.overview-inline-seat.horizontal{height:21px;padding:2px 5px}
+.overview-inline-seat.vertical{width:23px;padding:2px 1px}
+.overview-inline-seat .overview-inline-seat-text{display:block;width:100%;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center}
+.overview-inline-seat.vertical .overview-inline-seat-text{transform:rotate(-90deg);transform-origin:center;width:var(--overview-seat-label-length,70px);max-width:none}
 .overview-legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;font-size:.78rem;color:var(--muted)}
 .overview-overflow-note{font-size:.76rem;color:var(--muted)}
 
@@ -317,7 +325,7 @@ tr:hover td{background:#fbfdff}
       <button data-view="conteudos">Conteúdos</button>
       <button data-view="acessos">Acessos</button>
     </nav>
-    <div class="sidebar-footer">SGCES v1.4.8</div>
+    <div class="sidebar-footer">SGCES v1.4.9</div>
   </aside>
 
   <main class="main">
@@ -1539,25 +1547,98 @@ tr:hover td{background:#fbfdff}
     if(!root)return;
     closeCerimonialOverviewPopover(true);
     const e=state.data.event||{},bg=U.driveImage(e.CROQUI_URL||'');
-    root.innerHTML=`<div class="floor-toolbar"><div class="floor-zoom-controls"><button class="btn btn-sm" data-ov-out>−</button><button class="btn btn-sm" data-ov-reset>100%</button><button class="btn btn-sm" data-ov-in>+</button></div><span class="floor-pan-hint">Passe o mouse sobre uma mesa para consultar a composição. Clique para manter o popup aberto. Ao ampliar, arraste o croqui para percorrer o salão.</span></div><div class="cerimonial-overview-wrap"><div class="cerimonial-overview-floor" id="cerimonialOverviewFloor"></div></div><div class="overview-legend"><span>A visão geral mostra somente as mesas.</span><span>Passe o mouse ou clique para ver a disposição completa.</span><span>Use o zoom apenas para ampliar o croqui.</span></div>`;
+    root.innerHTML=`<div class="floor-toolbar"><div class="floor-zoom-controls"><button class="btn btn-sm" data-ov-out>−</button><button class="btn btn-sm" data-ov-reset>100%</button><button class="btn btn-sm" data-ov-in>+</button></div><span class="floor-pan-hint">A composição aparece automaticamente quando houver espaço entre os cartões. Ao ampliar, os nomes ganham espaço e ficam progressivamente mais completos. Passe o mouse ou clique na mesa para abrir a disposição completa.</span></div><div class="cerimonial-overview-wrap"><div class="cerimonial-overview-floor" id="cerimonialOverviewFloor"></div></div><div class="overview-legend"><span>Verde: anfitrião</span><span>Azul: maior precedência da mesa</span><span>Cartões só aparecem quando não houver sobreposição</span><span>Passe o mouse ou clique na mesa para consultar tudo</span></div>`;
     const wrap=root.querySelector('.cerimonial-overview-wrap'),floor=root.querySelector('#cerimonialOverviewFloor');
     if(bg){floor.style.backgroundImage=`url("${String(bg).replace(/"/g,'%22')}")`;floor.style.backgroundSize='contain';floor.style.backgroundPosition='center';floor.style.backgroundRepeat='no-repeat';}
     const activeGuests=(state.data.guests||[]).filter(g=>U.normalize(g.RSVP)!=='nao comparecera');
+    const groups=[];
+
     tables.forEach(t=>{
       const format=String(t.FORMATO||'REDONDA').toUpperCase(),shape=document.createElement('div'),w=U.num(t.W,format==='RETANGULAR'?18:10),h=format==='REDONDA'?w*16/9:U.num(t.H,format==='RETANGULAR'?8:10);
       shape.className='overview-table-shape '+(format==='REDONDA'?'round':format==='U'?'u':'rect')+' clickable';
       shape.style.left=U.num(t.X,50)+'%';shape.style.top=U.num(t.Y,50)+'%';shape.style.width=w+'%';shape.style.height=h+'%';shape.style.transform=`translate(-50%,-50%) rotate(${U.num(t.ROTACAO,0)}deg)`;
       const at=activeGuests.filter(g=>String(g.MESA_ID)===String(t.ID_MESA)).sort(U.byPrecedence),unseated=at.filter(g=>!g.ASSENTO).length;
       shape.innerHTML=`<span class="overview-table-name">${U.esc(t.NOME)}<span class="overview-table-meta">${at.length}/${U.num(t.CAPACIDADE)}${unseated?` • ${unseated} sem lugar`:''}</span></span>`;
-      shape.title=`${t.NOME} — ${at.length}/${U.num(t.CAPACIDADE)} pessoas. Passe o mouse ou clique para ver a disposição.`;
+      shape.title=`${t.NOME} — ${at.length}/${U.num(t.CAPACIDADE)} pessoas. Passe o mouse ou clique para ver a disposição completa.`;
       let hoverTimer=null;
       shape.addEventListener('mouseenter',()=>{if(hoverTimer)clearTimeout(hoverTimer);hoverTimer=setTimeout(()=>{if(!overviewPopoverPinned)showCerimonialOverviewPopover(t,shape,false);},130);});
       shape.addEventListener('mouseleave',()=>{if(hoverTimer){clearTimeout(hoverTimer);hoverTimer=null;}scheduleCloseCerimonialOverviewPopover();});
       shape.addEventListener('click',ev=>{ev.stopPropagation();showCerimonialOverviewPopover(t,shape,true);});
       floor.appendChild(shape);
+
+      const major=at.find(g=>U.normalize(g.NIVEL)==='autoridade')||at[0]||null,total=Math.max(1,U.num(t.CAPACIDADE),at.length),cards=[];
+      at.filter(g=>g.ASSENTO).forEach(g=>{
+        const code=String(g.ASSENTO),pos=overviewSeatPosition(t,code,total),orientation=U.seatOrientation(t,code,total),el=document.createElement('div');
+        const host=String(g.ID_CONVIDADO)===String(t.ANFITRIAO_ID||e.ANFITRIAO_ID||''),rank1=major&&String(g.ID_CONVIDADO)===String(major.ID_CONVIDADO);
+        const label=[g.POSTO_GRAD,g.NOME_GUERRA||g.NOME_COMPLETO].filter(Boolean).join(' ');
+        el.className='overview-inline-seat '+orientation+(host?' host':'')+(rank1?' rank1':'');
+        el.style.left=pos.x+'%';el.style.top=pos.y+'%';
+        el.dataset.orientation=orientation;el.dataset.label=label;el.title=label;
+        el.innerHTML=`<span class="overview-inline-seat-text">${U.esc(label)}</span>`;
+        floor.appendChild(el);cards.push(el);
+      });
+      groups.push({table:t,shape,cards,priority:(U.yes(t.PRINCIPAL)?0:1)});
     });
+
+    const rectsOverlap=(a,b,gap)=>!(a.right+gap<=b.left||b.right+gap<=a.left||a.bottom+gap<=b.top||b.bottom+gap<=a.top);
+    const expandedRect=(r,pad)=>({left:r.left-pad,top:r.top-pad,right:r.right+pad,bottom:r.bottom+pad});
+    let lastScale=-1;
+
+    function styleCardForWidth(el,labelLength,scale){
+      const inv=1/Math.max(.001,scale),vertical=el.dataset.orientation==='vertical';
+      el.style.setProperty('--overview-seat-label-length',labelLength+'px');
+      if(vertical){
+        el.style.width=Math.max(21,Math.min(27,21+(scale-1)*2))+'px';
+        el.style.height=labelLength+'px';
+      }else{
+        el.style.width=labelLength+'px';
+        el.style.height=Math.max(20,Math.min(24,20+(scale-1)*1.5))+'px';
+      }
+      el.style.fontSize=Math.max(8.4,Math.min(10.2,8.4+(scale-1)*.8))+'px';
+      el.style.transform=`translate(-50%,-50%) scale(${inv})`;
+    }
+
+    function updateInlineCompositions(scale,force){
+      if(!force&&Math.abs(scale-lastScale)<.015)return;
+      lastScale=scale;
+      const target=Math.max(58,Math.min(166,58+(scale-1)*48));
+      const widths=[];
+      for(let w=target;w>=58;w-=10)widths.push(Math.round(w));
+      if(widths[widths.length-1]!==58)widths.push(58);
+      groups.forEach(g=>g.cards.forEach(el=>{el.classList.remove('visible');el.style.visibility='hidden';el.style.opacity='0';}));
+      const accepted=[];
+      const ordered=groups.slice().sort((a,b)=>a.priority-b.priority||U.num(a.table.Y)-U.num(b.table.Y)||U.num(a.table.X)-U.num(b.table.X));
+
+      ordered.forEach(group=>{
+        if(!group.cards.length)return;
+        let chosen=null,chosenRects=null;
+        for(const width of widths){
+          group.cards.forEach(el=>styleCardForWidth(el,width,scale));
+          const rs=group.cards.map(el=>expandedRect(el.getBoundingClientRect(),2.5));
+          let bad=false;
+          for(let i=0;i<rs.length&&!bad;i++){
+            for(let j=i+1;j<rs.length;j++){if(rectsOverlap(rs[i],rs[j],0)){bad=true;break;}}
+            if(!bad&&accepted.some(ar=>rectsOverlap(rs[i],ar,0)))bad=true;
+          }
+          if(!bad){chosen=width;chosenRects=rs;break;}
+        }
+        if(chosen!==null){
+          group.cards.forEach(el=>{styleCardForWidth(el,chosen,scale);el.style.visibility='visible';el.style.opacity='1';el.classList.add('visible');});
+          accepted.push(...chosenRects);
+        }
+      });
+    }
+
     wrap.addEventListener('click',ev=>{if(!ev.target.closest('.overview-table-shape'))closeCerimonialOverviewPopover(true);});
-    const ctl=U.enablePanZoom(wrap,floor,{onChange:()=>{if(overviewPopoverEl&&!overviewPopoverPinned)closeCerimonialOverviewPopover(true);}});
+    const ctl=U.enablePanZoom(wrap,floor,{onChange:({scale})=>{
+      if(overviewPopoverEl&&!overviewPopoverPinned)closeCerimonialOverviewPopover(true);
+      requestAnimationFrame(()=>updateInlineCompositions(scale,false));
+    }});
+    requestAnimationFrame(()=>updateInlineCompositions(ctl.getScale(),true));
+    if(typeof ResizeObserver!=='undefined'){
+      const ro=new ResizeObserver(()=>requestAnimationFrame(()=>updateInlineCompositions(ctl.getScale(),true)));
+      ro.observe(wrap);
+    }
     root.querySelector('[data-ov-in]').onclick=()=>{closeCerimonialOverviewPopover(true);ctl.zoomIn();};
     root.querySelector('[data-ov-out]').onclick=()=>{closeCerimonialOverviewPopover(true);ctl.zoomOut();};
     root.querySelector('[data-ov-reset]').onclick=()=>{closeCerimonialOverviewPopover(true);ctl.reset();};
