@@ -122,9 +122,9 @@ tr:hover td{background:#fbfdff}
 .floor-table.u::before{content:"";position:absolute;inset:0;border:6px solid currentColor;border-top:0;border-radius:0 0 10px 10px;pointer-events:none;box-sizing:border-box}
 .floor-table.u>div{position:relative;z-index:1;background:rgba(255,255,255,.9);border-radius:8px;padding:5px 8px}
 .floor-table.dragging{cursor:grabbing;z-index:10;box-shadow:0 12px 28px rgba(15,23,42,.18)}
-.floor-table .occ{display:block;font-size:var(--floor-occ-size,.72rem);font-weight:700;margin-top:2px;color:#52708f;line-height:1.02}
-.floor-table.compact-text>div{max-width:84%}
-.floor-table.compact-text .occ{margin-top:1px}
+.floor-table .floor-table-label{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;max-width:92%;line-height:1.04;text-align:center}
+.floor-table .floor-table-name{font-weight:800;display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.floor-table .occ{display:block;font-size:.72rem;font-weight:700;margin-top:2px;color:#52708f;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .floor-table.highlight{outline:5px solid rgba(22,163,74,.25);background:#dcfce7 !important;border-color:#16a34a !important;color:#14532d !important}
 .floor-table.u.highlight{background:transparent!important;border-color:transparent!important;color:#16a34a!important}
 .floor-table.full{background:#fff1f2;border-color:#e11d48;color:#881337}
@@ -167,27 +167,28 @@ tr:hover td{background:#fbfdff}
 .member-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:9px;align-items:center;padding:8px;border-bottom:1px solid #eef2f7}
 .member-row:last-child{border-bottom:0}
 .overview-card{margin-bottom:16px}
-.cerimonial-overview-wrap{position:relative;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:#fff;touch-action:none}
+.cerimonial-overview-wrap{position:relative;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:#fff;touch-action:none;cursor:grab}
+.cerimonial-overview-wrap.is-panning{cursor:grabbing}
 .cerimonial-overview-floor{position:relative;width:100%;aspect-ratio:16/9;min-width:0;background-color:#f8fafc;background-image:linear-gradient(90deg,#eef2f7 1px,transparent 1px),linear-gradient(#eef2f7 1px,transparent 1px);background-size:25px 25px;background-position:center;background-repeat:repeat;transform-origin:center center;will-change:transform}
 .overview-table-shape{position:absolute;transform:translate(-50%,-50%);background:#eef4fb;border:2px solid #7d9fc8;color:#183b68;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:800;border-radius:8px;box-sizing:border-box;z-index:1}
 .overview-table-shape.round{border-radius:50%}
 .overview-table-shape.u{background:transparent;border:0;border-radius:0}
 .overview-table-shape.u::before{content:"";position:absolute;inset:0;border:4px solid #7d9fc8;border-top:0;border-radius:0 0 8px 8px}
-.overview-table-name{position:relative;z-index:2;background:rgba(255,255,255,.88);padding:2px 5px;border-radius:5px;font-size:clamp(8px,.72vw,11px);max-width:92%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:opacity .15s ease}
-.overview-table-shape.minimal .overview-table-name{opacity:0;pointer-events:none}
-.overview-seat{position:absolute;transform:translate(-50%,-50%);z-index:3;border:1px solid #cbd5e1;background:#fff;border-radius:6px;padding:2px 5px;text-align:center;font-size:clamp(7px,.57vw,9.5px);font-weight:750;line-height:1.08;box-shadow:0 2px 6px rgba(15,23,42,.07);display:flex;align-items:center;justify-content:center;transition:all .15s ease}
-.overview-seat .ov-label{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.overview-seat.horizontal{min-width:48px;max-width:96px}
-.overview-seat.vertical{width:24px;height:76px;padding:4px 2px}
-.overview-seat.vertical .ov-label{writing-mode:vertical-rl;transform:rotate(180deg);white-space:nowrap;max-height:100%;max-width:none;overflow:hidden;text-overflow:ellipsis}
+.overview-table-name{position:relative;z-index:2;background:rgba(255,255,255,.88);padding:2px 5px;border-radius:5px;font-size:clamp(8px,.72vw,11px);max-width:92%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.overview-seat{position:absolute;transform:translate(-50%,-50%);z-index:3;border:1px solid #cbd5e1;background:#fff;border-radius:5px;text-align:center;font-size:8.5px;font-weight:750;line-height:1.05;box-shadow:0 2px 6px rgba(15,23,42,.07);box-sizing:border-box;display:flex;align-items:center;justify-content:center;transition:width .14s,height .14s,padding .14s,border-radius .14s,box-shadow .14s,opacity .14s;overflow:visible}
+.overview-seat.horizontal{width:74px;min-height:18px;height:18px;padding:2px 5px}
+.overview-seat.vertical{width:22px;height:78px;padding:0 1px;border-radius:6px}
+.overview-seat .overview-seat-text{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.overview-seat.vertical .overview-seat-text{transform:rotate(-90deg);transform-origin:center;white-space:nowrap;width:74px;max-width:none}
 .overview-seat.host{border-color:#0f766e;background:#ecfdf5}
 .overview-seat.rank1{border-color:#1d4ed8;background:#eff6ff}
-.overview-seat.compact{width:14px !important;height:14px !important;min-width:14px !important;max-width:14px !important;padding:0 !important;border-radius:50%}
-.overview-seat.compact .ov-label{display:none}
+.overview-seat.mini{width:12px !important;height:12px !important;min-height:12px !important;padding:0 !important;border-radius:50% !important;min-width:0;border-width:2px;box-shadow:none}
+.overview-seat.mini .overview-seat-text{display:none}
+.overview-seat.mini.show-label::after,.overview-seat.mini:hover::after{content:attr(data-label);position:absolute;left:50%;top:-8px;transform:translate(-50%,-100%);background:#0f172a;color:#fff;padding:5px 7px;border-radius:7px;font-size:11px;font-weight:700;white-space:nowrap;box-shadow:0 8px 20px rgba(15,23,42,.26);pointer-events:none;max-width:220px;overflow:hidden;text-overflow:ellipsis}
+.overview-seat.compact.horizontal{width:52px;height:16px;padding:1px 4px;font-size:7.5px}
+.overview-seat.compact.vertical{width:18px;height:58px;font-size:7.5px}
 .overview-seat.clickable,.overview-table-shape.clickable{cursor:pointer}
-.overview-popup{position:absolute;z-index:30;min-width:180px;max-width:260px;background:rgba(15,23,42,.96);color:#fff;border-radius:10px;padding:8px 10px;box-shadow:0 10px 24px rgba(15,23,42,.35);font-size:.8rem;line-height:1.25;display:none;pointer-events:none}
-.overview-popup.show{display:block}
-.overview-popup strong{display:block;font-size:.86rem;margin-bottom:3px}
+.overview-overflow-note{font-size:.76rem;color:var(--muted)}
 .overview-legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;font-size:.78rem;color:var(--muted)}
 .photo-upload-box{display:grid;grid-template-columns:86px 1fr;gap:12px;align-items:center;border:1px dashed #cbd5e1;border-radius:12px;padding:10px}
 .photo-preview{width:86px;height:86px;border-radius:12px;background:#eef2f7;display:flex;align-items:center;justify-content:center;overflow:hidden;color:#7c899b;font-size:.72rem;font-weight:800;text-align:center}
@@ -537,6 +538,41 @@ tr:hover td{background:#fbfdff}
     return `<span class="badge ${cls}">${esc(v||'—')}</span>`;
   }
 
+  function fitTextToBox_(node,min,max,step){
+    if(!node)return;
+    min=num(min,8);max=num(max,14);step=num(step,.4);
+    node.style.fontSize=max+'px';
+    let size=max,guard=0;
+    while(size>min&&guard++<24&&(node.scrollWidth>node.clientWidth+1||node.scrollHeight>node.clientHeight+1)){
+      size-=step;node.style.fontSize=size+'px';
+    }
+  }
+
+  function fitFloorTableContent_(el){
+    if(!el)return;
+    const label=el.querySelector('.floor-table-label');
+    const name=el.querySelector('.floor-table-name');
+    const occ=el.querySelector('.occ');
+    if(!label||!name)return;
+    const shape=String(el.dataset.shape||'REDONDA').toUpperCase();
+    const w=el.clientWidth||0,h=el.clientHeight||0;
+    if(shape==='REDONDA'){
+      const size=Math.max(9,Math.min(18,Math.min(w,h)*0.17));
+      name.style.fontSize=size+'px';
+      if(occ)occ.style.fontSize=Math.max(8,Math.min(13,size*.72))+'px';
+    }else if(shape==='U'){
+      const size=Math.max(9,Math.min(17,Math.min(w,h)*0.15));
+      name.style.fontSize=size+'px';
+      if(occ)occ.style.fontSize=Math.max(8,Math.min(12,size*.72))+'px';
+    }else{
+      const size=Math.max(9,Math.min(17,Math.min(w*.09,h*.42)));
+      name.style.fontSize=size+'px';
+      if(occ)occ.style.fontSize=Math.max(8,Math.min(12,size*.72))+'px';
+    }
+    fitTextToBox_(name,7.5,parseFloat(name.style.fontSize)||12,.35);
+    if(occ)fitTextToBox_(occ,7,parseFloat(occ.style.fontSize)||10,.35);
+  }
+
   function renderFloor(container,tables,opts){
     opts=opts||{};
     container.innerHTML='';
@@ -570,13 +606,6 @@ tr:hover td{background:#fbfdff}
       const h=shape==='REDONDA'?w*ratio:num(t.H,shape==='RETANGULAR'?8:10);
       el.style.left=num(t.X,50)+'%';el.style.top=num(t.Y,50)+'%';el.style.width=w+'%';el.style.height=h+'%';
       el.style.transform=`translate(-50%,-50%) rotate(${num(t.ROTACAO,0)}deg)`;
-      const pxW=Math.max(50,(container.clientWidth||1200)*(w/100));
-      const pxH=Math.max(36,(container.clientHeight||675)*(h/100));
-      const base=Math.max(9,Math.min(shape==='REDONDA'?18:20,Math.min(pxW,pxH)*(shape==='REDONDA'?0.16:0.14)));
-      const occSize=Math.max(7,Math.min(base-1,base*0.72));
-      el.style.setProperty('--floor-name-size',base+'px');
-      el.style.setProperty('--floor-occ-size',occSize+'px');
-      if(base<11.5)el.classList.add('compact-text');
       let occ='';
       if(typeof opts.occupancyLabel==='function'){
         const label=opts.occupancyLabel(t);
@@ -584,10 +613,15 @@ tr:hover td{background:#fbfdff}
       }else if(typeof t.OCUPACAO!=='undefined'){
         occ=`<span class="occ">${num(t.OCUPACAO)}/${num(t.CAPACIDADE)}${typeof t.VAGAS!=='undefined'?' • '+num(t.VAGAS)+' vaga(s)':''}</span>`;
       }
-      el.innerHTML=`<div>${esc(t.NOME||('Mesa '+t.NUMERO))}${occ}</div>${opts.editor?'<span class="resize-handle" title="Redimensionar"></span>':''}`;
+      el.innerHTML=`<div class="floor-table-label"><span class="floor-table-name">${esc(t.NOME||('Mesa '+t.NUMERO))}</span>${occ}</div>${opts.editor?'<span class="resize-handle" title="Redimensionar"></span>':''}`;
       if(opts.onClick)el.addEventListener('click',ev=>{if(locked)return;opts.onClick(t,el,ev);});
-      container.appendChild(el);
+      container.appendChild(el);fitFloorTableContent_(el);
     });
+    if(typeof ResizeObserver!=='undefined'){
+      try{container._sgcesFloorRO&&container._sgcesFloorRO.disconnect();}catch(err){}
+      const ro=new ResizeObserver(()=>{container.querySelectorAll('.floor-table').forEach(fitFloorTableContent_);});
+      ro.observe(container);container._sgcesFloorRO=ro;
+    }
   }
 
   function seatCodesForTable(table,total){
@@ -746,39 +780,47 @@ tr:hover td{background:#fbfdff}
     return canvas;
   }
 
-  function enablePanZoom(wrap,floor){
+  function enablePanZoom(wrap,floor,opts){
     if(!wrap||!floor)return null;
-    let scale=1,tx=0,ty=0,pan=null;
-    const apply=()=>{floor.style.transform=`translate(${tx}px,${ty}px) scale(${scale})`;try{wrap.dispatchEvent(new CustomEvent('panzoomchange',{detail:{scale,tx,ty}}));}catch(err){}};
+    opts=opts||{};
+    let scale=num(opts.initialScale,1),tx=0,ty=0,pan=null;
+    const minScale=num(opts.minScale,.35),maxScale=num(opts.maxScale,4);
+    const emit=()=>{floor.style.transform=`translate(${tx}px,${ty}px) scale(${scale})`;if(typeof opts.onChange==='function')opts.onChange({scale,tx,ty});};
     const zoomBy=factor=>{
-      scale=Math.max(0.35,Math.min(4,scale*factor));
+      scale=Math.max(minScale,Math.min(maxScale,scale*factor));
       if(Math.abs(scale-1)<0.001){scale=1;tx=0;ty=0;}
-      apply();
+      emit();
     };
-    const reset=()=>{scale=1;tx=0;ty=0;apply();};
+    const reset=()=>{scale=1;tx=0;ty=0;emit();};
     wrap.addEventListener('pointerdown',e=>{
       if(e.target.closest('.floor-table')||e.target.closest('.floor-zoom-controls'))return;
       pan={x:e.clientX,y:e.clientY,tx,ty};
       try{wrap.setPointerCapture(e.pointerId);}catch(err){}
-      wrap.style.cursor='grabbing';
+      wrap.classList.add('is-panning');
     });
     wrap.addEventListener('pointermove',e=>{
       if(!pan||Math.abs(scale-1)<0.001)return;
-      tx=pan.tx+(e.clientX-pan.x);ty=pan.ty+(e.clientY-pan.y);apply();
+      tx=pan.tx+(e.clientX-pan.x);ty=pan.ty+(e.clientY-pan.y);emit();
     });
-    const end=()=>{pan=null;wrap.style.cursor='';};
-    wrap.addEventListener('pointerup',end);wrap.addEventListener('pointercancel',end);
+    const end=()=>{pan=null;wrap.classList.remove('is-panning');};
+    wrap.addEventListener('pointerup',end);wrap.addEventListener('pointercancel',end);wrap.addEventListener('pointerleave',end);
+    wrap.addEventListener('wheel',e=>{
+      if(!e.ctrlKey && !opts.wheelZoom)return;
+      e.preventDefault();
+      zoomBy(e.deltaY<0?1.12:1/1.12);
+    },{passive:false});
+    emit();
     return{zoomIn:()=>zoomBy(1.2),zoomOut:()=>zoomBy(1/1.2),reset,getScale:()=>scale};
   }
 
-  window.SGCES_UI={$, $$, esc, yes, num, fmtDate, fmtTime, dateInputValue, timeInputValue, normalize, byPrecedence, displayName, tableName, driveImage, toast, setBusy, modal, badgeStatus, renderFloor, renderSeating, seatCodesForTable, seatCoordinates, enablePanZoom};
+  window.SGCES_UI={$, $$, esc, yes, num, fmtDate, fmtTime, dateInputValue, timeInputValue, normalize, byPrecedence, displayName, tableName, driveImage, toast, setBusy, modal, badgeStatus, renderFloor, renderSeating, seatCodesForTable, seatCoordinates, seatOrientation, enablePanZoom};
 })();
 
 </script>
 <script>
 (function(){
   const U=window.SGCES_UI, A=window.SGCES_API;
-  const state={events:[],eventId:'',activeEventId:'',postos:[],openEventCount:0,maxOpenEvents:10,data:{event:null,guests:[],tables:[],contents:[],sponsors:[],stats:{}},view:'dashboard',selectedCerimonialTable:'',manualSeatMode:false,manualSeatGuestId:'',showCerimonialOverview:false};
+  const state={events:[],eventId:'',activeEventId:'',postos:[],openEventCount:0,maxOpenEvents:10,data:{event:null,guests:[],tables:[],contents:[],sponsors:[],stats:{}},view:'dashboard',selectedCerimonialTable:'',manualSeatMode:false,manualSeatGuestId:'',cerimonialOverviewOpen:false};
 
   document.addEventListener('DOMContentLoaded',init);
 
@@ -908,7 +950,7 @@ tr:hover td{background:#fbfdff}
         <div class="card"><h3>Croqui geral</h3><div class="floor-wrap"><div class="floor" id="dashFloor"></div></div></div>
         <div class="card"><h3>Últimas chegadas</h3>${latest.length?`<div class="table-wrap"><table><thead><tr><th>Horário</th><th>Convidado</th><th>Mesa</th></tr></thead><tbody>${latest.map(g=>`<tr><td>${U.fmtTime(g.HORARIO_CHECKIN)}</td><td>${U.esc(U.displayName(g))}</td><td>${U.esc(tableFor(g.MESA_ID)?.NOME||'—')}</td></tr>`).join('')}</tbody></table></div>`:'<p class="muted">Ainda não há check-ins.</p>'}</div>
       </div>`;
-    U.renderFloor(U.$('#dashFloor'),state.data.tables||[],{backgroundUrl:state.data.event&&state.data.event.CROQUI_URL,occupancyLabel:t=>`${U.num(t.OCUPACAO)}/${U.num(t.CAPACIDADE)}`});
+    U.renderFloor(U.$('#dashFloor'),state.data.tables||[],{backgroundUrl:state.data.event&&state.data.event.CROQUI_URL});
     c.querySelector('[data-open-reception]').onclick=()=>window.open('recepcao.html?evento='+encodeURIComponent(state.eventId),'_blank');
     c.querySelector('[data-open-tv]').onclick=()=>window.open('tv.html?evento='+encodeURIComponent(state.eventId),'_blank');
   }
@@ -1433,63 +1475,50 @@ tr:hover td{background:#fbfdff}
   function renderCerimonialOverview(root,tables){
     if(!root)return;
     const e=state.data.event||{},bg=U.driveImage(e.CROQUI_URL||'');
-    root.innerHTML=`<div class="floor-toolbar"><div class="floor-zoom-controls"><button class="btn btn-sm" data-ov-out>−</button><button class="btn btn-sm" data-ov-reset>100%</button><button class="btn btn-sm" data-ov-in>+</button></div><span class="floor-pan-hint">Quando o zoom estiver pequeno, os nomes dos lugares se recolhem para evitar sobreposição. Passe o mouse ou toque no ponto para ver quem é. Toque em uma mesa para abrir o detalhe.</span></div><div class="cerimonial-overview-wrap"><div class="cerimonial-overview-floor" id="cerimonialOverviewFloor"></div><div class="overview-popup" data-overview-popup></div></div><div class="overview-legend"><span>Verde: anfitrião</span><span>Azul: maior precedência da mesa</span><span>Nomes aparecem automaticamente conforme o zoom aumenta</span></div>`;
-    const wrap=root.querySelector('.cerimonial-overview-wrap'),floor=root.querySelector('#cerimonialOverviewFloor'),popup=root.querySelector('[data-overview-popup]');
+    root.innerHTML=`<div class="floor-toolbar"><div class="floor-zoom-controls"><button class="btn btn-sm" data-ov-out>−</button><button class="btn btn-sm" data-ov-reset>100%</button><button class="btn btn-sm" data-ov-in>+</button></div><span class="floor-pan-hint">Em zoom baixo os lugares aparecem como pontos. Aproxime para ver os cartões; passe o mouse ou toque para identificar um lugar quando ele estiver compacto.</span></div><div class="cerimonial-overview-wrap"><div class="cerimonial-overview-floor" id="cerimonialOverviewFloor"></div></div><div class="overview-legend"><span>Verde: anfitrião</span><span>Azul: maior precedência da mesa</span><span>Arraste o croqui quando ampliar</span></div>`;
+    const wrap=root.querySelector('.cerimonial-overview-wrap'),floor=root.querySelector('#cerimonialOverviewFloor');
     if(bg){floor.style.backgroundImage=`url("${String(bg).replace(/"/g,'%22')}")`;floor.style.backgroundSize='contain';floor.style.backgroundPosition='center';floor.style.backgroundRepeat='no-repeat';}
     const activeGuests=(state.data.guests||[]).filter(g=>U.normalize(g.RSVP)!=='nao comparecera');
     const seatEls=[];
-    function showPopup(target,title,lines){
-      const wr=wrap.getBoundingClientRect(),tr=target.getBoundingClientRect();
-      popup.innerHTML=`<strong>${U.esc(title||'')}</strong>${(lines||[]).filter(Boolean).map(x=>`<div>${U.esc(x)}</div>`).join('')}`;
-      const left=Math.max(8,Math.min(wrap.clientWidth-268,(tr.left-wr.left)+(tr.width/2)-120));
-      const top=Math.max(8,(tr.top-wr.top)-popup.offsetHeight-10||8);
-      popup.style.left=left+'px';popup.style.top=top+'px';popup.classList.add('show');
-    }
-    function hidePopup(){popup.classList.remove('show');}
     tables.forEach(t=>{
       const format=String(t.FORMATO||'REDONDA').toUpperCase(),shape=document.createElement('div'),w=U.num(t.W,format==='RETANGULAR'?18:10),h=format==='REDONDA'?w*9/16:U.num(t.H,format==='RETANGULAR'?8:10);
       shape.className='overview-table-shape '+(format==='REDONDA'?'round':format==='U'?'u':'rect')+' clickable';shape.style.left=U.num(t.X,50)+'%';shape.style.top=U.num(t.Y,50)+'%';shape.style.width=w+'%';shape.style.height=h+'%';shape.style.transform=`translate(-50%,-50%) rotate(${U.num(t.ROTACAO,0)}deg)`;
       const at=activeGuests.filter(g=>String(g.MESA_ID)===String(t.ID_MESA)).sort(U.byPrecedence),unseated=at.filter(g=>!g.ASSENTO).length;
-      shape.innerHTML=`<span class="overview-table-name">${U.esc(t.NOME)}${unseated?` • ${unseated} sem lugar`:''}</span>`;shape.title=`${t.NOME} — ${at.length}/${U.num(t.CAPACIDADE)} pessoas`;
-      shape.onclick=()=>{state.selectedCerimonialTable=t.ID_MESA;state.manualSeatGuestId='';renderCerimonial();setTimeout(()=>U.$('#seatingStage')?.scrollIntoView({behavior:'smooth',block:'center'}),30);};
-      shape.onmouseenter=()=>showPopup(shape,t.NOME,[`${at.length}/${U.num(t.CAPACIDADE)} pessoa(s)`,unseated?`${unseated} sem lugar definido`:'' ]);
-      shape.onmouseleave=()=>hidePopup();
-      floor.appendChild(shape);
+      shape.innerHTML=`<span class="overview-table-name">${U.esc(t.NOME)}${unseated?` • ${unseated} sem lugar`:''}</span>`;shape.title=`${t.NOME} — ${at.length}/${U.num(t.CAPACIDADE)} pessoas`;shape.onclick=()=>{state.selectedCerimonialTable=t.ID_MESA;state.manualSeatGuestId='';renderCerimonial();setTimeout(()=>U.$('#seatingStage')?.scrollIntoView({behavior:'smooth',block:'center'}),30);};floor.appendChild(shape);
       const major=at.find(g=>U.normalize(g.NIVEL)==='autoridade')||at[0]||null,total=Math.max(1,U.num(t.CAPACIDADE),at.length);
       at.filter(g=>g.ASSENTO).forEach(g=>{
-        const pos=overviewSeatPosition(t,String(g.ASSENTO),total),el=document.createElement('div'),host=String(g.ID_CONVIDADO)===String(t.ANFITRIAO_ID||e.ANFITRIAO_ID||''),rank1=major&&String(g.ID_CONVIDADO)===String(major.ID_CONVIDADO);
-        const orientation=seatOrientation(t,String(g.ASSENTO),total);
-        el.className='overview-seat '+orientation+' clickable'+(host?' host':'')+(rank1?' rank1':'');el.style.left=pos.x+'%';el.style.top=pos.y+'%';el.style.transform='translate(-50%,-50%)';
+        const seatCode=String(g.ASSENTO),pos=overviewSeatPosition(t,seatCode,total),orientation=U.seatOrientation(t,seatCode,total),el=document.createElement('div'),host=String(g.ID_CONVIDADO)===String(t.ANFITRIAO_ID||e.ANFITRIAO_ID||''),rank1=major&&String(g.ID_CONVIDADO)===String(major.ID_CONVIDADO);
         const short=[g.POSTO_GRAD,g.NOME_GUERRA||g.NOME_COMPLETO].filter(Boolean).join(' ');
-        el.dataset.orientation=orientation;el.dataset.short=short;el.dataset.full=[short,g.NOME_COMPLETO].filter(Boolean).join(' • ');
-        el.innerHTML=`<span class="ov-label">${U.esc(short)}</span>`;
-        el.title=[short,g.NOME_COMPLETO,t.NOME,g.ASSENTO].filter(Boolean).join(' • ');
-        el.onclick=ev=>{ev.stopPropagation();showPopup(el,short,[g.NOME_COMPLETO||'',t.NOME,g.ASSENTO]);state.selectedCerimonialTable=t.ID_MESA;state.manualSeatGuestId=g.ID_CONVIDADO;};
-        el.onmouseenter=()=>{if(el.classList.contains('compact'))showPopup(el,short,[g.NOME_COMPLETO||'',t.NOME,g.ASSENTO]);};
-        el.onmouseleave=()=>{if(el.classList.contains('compact'))hidePopup();};
-        seatEls.push(el);floor.appendChild(el);
+        el.className='overview-seat '+orientation+' clickable'+(host?' host':'')+(rank1?' rank1':'');
+        el.style.left=pos.x+'%';el.style.top=pos.y+'%';el.style.transform='translate(-50%,-50%)';
+        el.dataset.label=[short,g.NOME_COMPLETO,t.NOME,g.ASSENTO].filter(Boolean).join(' • ');
+        el.innerHTML=`<span class="overview-seat-text">${U.esc(short)}</span>`;
+        el.title=el.dataset.label;
+        el.addEventListener('click',ev=>{
+          ev.stopPropagation();
+          if(el.classList.contains('mini')){
+            seatEls.forEach(x=>x.classList.remove('show-label'));
+            el.classList.toggle('show-label');
+            return;
+          }
+          state.selectedCerimonialTable=t.ID_MESA;state.manualSeatGuestId=g.ID_CONVIDADO;renderCerimonial();
+        });
+        floor.appendChild(el);seatEls.push(el);
       });
     });
-    const ctl=U.enablePanZoom(wrap,floor);
-    function updateOverviewDensity(){
-      const scale=ctl&&ctl.getScale?ctl.getScale():1;
-      const resetBtn=root.querySelector('[data-ov-reset]');
-      if(resetBtn)resetBtn.textContent=Math.round(scale*100)+'%';
-      floor.querySelectorAll('.overview-table-shape').forEach(shape=>shape.classList.toggle('minimal',scale<0.85));
+
+    const applySeatVisibility=scale=>{
+      const mode=scale>=1.75?'full':scale>=1.32?'compact':'mini';
       seatEls.forEach(el=>{
-        const orientation=el.dataset.orientation||'horizontal';
-        const threshold=orientation==='vertical'?1.45:1.18;
-        const showLabel=scale>=threshold;
-        el.classList.toggle('compact',!showLabel);
+        el.classList.remove('mini','compact','show-label');
+        if(mode==='mini')el.classList.add('mini');
+        else if(mode==='compact')el.classList.add('compact');
       });
-      if(scale<1.02)hidePopup();
-    }
-    root.querySelector('[data-ov-in]').onclick=()=>{ctl.zoomIn();updateOverviewDensity();};
-    root.querySelector('[data-ov-out]').onclick=()=>{ctl.zoomOut();updateOverviewDensity();};
-    root.querySelector('[data-ov-reset]').onclick=()=>{ctl.reset();updateOverviewDensity();};
-    wrap.addEventListener('panzoomchange',updateOverviewDensity);
-    wrap.addEventListener('click',ev=>{if(ev.target===wrap||ev.target===floor)hidePopup();});
-    updateOverviewDensity();
+    };
+
+    const ctl=U.enablePanZoom(wrap,floor,{onChange:({scale})=>applySeatVisibility(scale)});
+    applySeatVisibility(ctl.getScale());
+    root.querySelector('[data-ov-in]').onclick=()=>ctl.zoomIn();root.querySelector('[data-ov-out]').onclick=()=>ctl.zoomOut();root.querySelector('[data-ov-reset]').onclick=()=>ctl.reset();
   }
 
   function tableMembersModal(table){
@@ -1516,12 +1545,11 @@ tr:hover td{background:#fbfdff}
     const mainDir=t?directionToPrincipal(t):'',major=seated.find(g=>U.normalize(g.NIVEL)==='autoridade')||seated[0]||null;
     const info=t&&!U.yes(t.PRINCIPAL)&&major?`<div class="small" style="margin-top:8px"><strong>Maior precedência:</strong> ${U.esc([major.POSTO_GRAD,major.NOME_GUERRA||major.NOME_COMPLETO].filter(Boolean).join(' '))}${mainDir?` • Mesa principal ${U.esc(mainDir)}`:''}</div>`:'';
     const autoOn=U.yes((state.data.event||{}).AUTO_AUTORIDADES);
-    const headerActions=`<button class="btn" data-auth-config>Distribuição automática</button>${autoOn?'<button class="btn" data-redistribute>Redistribuir agora</button>':''}<button class="btn" data-print-layout>Imprimir</button><button class="btn btn-sm" data-toggle-overview>${state.showCerimonialOverview?'Ocultar visão geral':'Abrir visão geral'}</button>`;
-    c.innerHTML=heading('Cerimonial','Distribuição visual das mesas e dos lugares.',headerActions)+`${state.showCerimonialOverview?`<div class="card overview-card"><div class="section-actions"><div><h3 style="margin:0">Visão geral do croqui</h3><div class="small muted">Consulte quando precisar. Os lugares só exibem nome quando o zoom permitir leitura sem sobreposição.</div></div><div class="actions"><button class="btn btn-sm" data-collapse-overview>Fechar visão geral</button></div></div><div id="cerimonialOverview"></div></div>`:''}<div class="cerimonial-grid"><div class="card"><h3>Mesas planejadas</h3><div class="cerimonial-table-list">${tables.length?tables.map(x=>`<button class="btn ${String(x.ID_MESA)===String(state.selectedCerimonialTable)?'btn-soft':''}" style="width:100%;margin-bottom:7px;justify-content:flex-start;white-space:normal;text-align:left" data-ct="${U.esc(x.ID_MESA)}">${U.esc(x.NOME)} • ${U.esc(x.FORMATO)} <span class="badge ${U.yes(x.USA_ICA)?'info':''}" style="margin-left:auto">Padrão ${U.yes(x.USA_ICA)?'SIM':'NÃO'}</span></button>`).join(''):'<p class="muted">Nenhuma mesa planejada.</p>'}</div></div><div class="card">${t?`<div class="section-actions"><div><h3 style="margin:0">${U.esc(t.NOME)}</h3><div class="small muted">${seated.length}/${U.num(t.CAPACIDADE)} pessoas • ${U.esc(t.FORMATO)}</div>${info}</div><div class="actions"><button class="btn btn-sm" data-toggle-standard>Composição padrão: ${U.yes(t.USA_ICA)?'SIM':'NÃO'}</button><button class="btn btn-sm" data-edit-table>Editar mesa</button></div></div><div class="manual-seat-toolbar"><button class="btn ${state.manualSeatMode?'btn-soft':''}" data-manual>${state.manualSeatMode?'Encerrar edição de lugares':'Editar lugares manualmente'}</button><button class="btn" data-members>Selecionar pessoas</button>${U.yes(t.USA_ICA)?'<button class="btn btn-primary" data-compose>Aplicar composição padrão</button>':''}<button class="btn" data-clear>Limpar assentos</button>${state.manualSeatGuestId?'<button class="btn btn-danger" data-unseat>Retirar selecionado do assento</button>':''}</div>${state.manualSeatMode?'<div class="manual-seat-hint">Arraste um nome para outro assento. Em celular ou tablet, toque primeiro no nome e depois no assento desejado. Se o destino estiver ocupado, os dois trocam de lugar.</div>':''}<div class="seating-stage" id="seatingStage"></div><div id="unseatedTray"></div>`:'<p class="muted">Selecione uma mesa.</p>'}</div></div>`;
-    if(state.showCerimonialOverview)renderCerimonialOverview(U.$('#cerimonialOverview',c),tables);
+    const headerActions=`<button class="btn" data-auth-config>Distribuição automática</button>${autoOn?'<button class="btn" data-redistribute>Redistribuir agora</button>':''}<button class="btn" data-print-layout>Imprimir</button>`;
+    c.innerHTML=heading('Cerimonial','Distribuição visual das mesas e dos lugares.',headerActions)+`<div class="card overview-card"><div class="section-actions"><div><h3 style="margin:0">Visão geral do croqui</h3><div class="small muted">Consulta opcional das mesas planejadas e dos lugares já definidos.</div></div><div class="actions"><button class="btn btn-sm ${state.cerimonialOverviewOpen?'btn-soft':''}" data-toggle-overview>${state.cerimonialOverviewOpen?'Ocultar visão geral':'Mostrar visão geral'}</button></div></div>${state.cerimonialOverviewOpen?'<div id="cerimonialOverview"></div>':'<div class="overview-overflow-note" style="margin-top:8px">Abra a visão geral somente quando precisar conferir o conjunto do salão. No detalhe abaixo continuam disponíveis todas as ações que já estão funcionando.</div>'}</div><div class="cerimonial-grid"><div class="card"><h3>Mesas planejadas</h3><div class="cerimonial-table-list">${tables.length?tables.map(x=>`<button class="btn ${String(x.ID_MESA)===String(state.selectedCerimonialTable)?'btn-soft':''}" style="width:100%;margin-bottom:7px;justify-content:flex-start;white-space:normal;text-align:left" data-ct="${U.esc(x.ID_MESA)}">${U.esc(x.NOME)} • ${U.esc(x.FORMATO)} <span class="badge ${U.yes(x.USA_ICA)?'info':''}" style="margin-left:auto">Padrão ${U.yes(x.USA_ICA)?'SIM':'NÃO'}</span></button>`).join(''):'<p class="muted">Nenhuma mesa planejada.</p>'}</div></div><div class="card">${t?`<div class="section-actions"><div><h3 style="margin:0">${U.esc(t.NOME)}</h3><div class="small muted">${seated.length}/${U.num(t.CAPACIDADE)} pessoas • ${U.esc(t.FORMATO)}</div>${info}</div><div class="actions"><button class="btn btn-sm" data-toggle-standard>Composição padrão: ${U.yes(t.USA_ICA)?'SIM':'NÃO'}</button><button class="btn btn-sm" data-edit-table>Editar mesa</button></div></div><div class="manual-seat-toolbar"><button class="btn ${state.manualSeatMode?'btn-soft':''}" data-manual>${state.manualSeatMode?'Encerrar edição de lugares':'Editar lugares manualmente'}</button><button class="btn" data-members>Selecionar pessoas</button>${U.yes(t.USA_ICA)?'<button class="btn btn-primary" data-compose>Aplicar composição padrão</button>':''}<button class="btn" data-clear>Limpar assentos</button>${state.manualSeatGuestId?'<button class="btn btn-danger" data-unseat>Retirar selecionado do assento</button>':''}</div>${state.manualSeatMode?'<div class="manual-seat-hint">Arraste um nome para outro assento. Em celular ou tablet, toque primeiro no nome e depois no assento desejado. Se o destino estiver ocupado, os dois trocam de lugar.</div>':''}<div class="seating-stage" id="seatingStage"></div><div id="unseatedTray"></div>`:'<p class="muted">Selecione uma mesa.</p>'}</div></div>`;
+    if(state.cerimonialOverviewOpen)renderCerimonialOverview(U.$('#cerimonialOverview',c),tables);
+    c.querySelector('[data-toggle-overview]')?.addEventListener('click',()=>{state.cerimonialOverviewOpen=!state.cerimonialOverviewOpen;renderCerimonial();});
     c.querySelectorAll('[data-ct]').forEach(b=>b.onclick=()=>{state.selectedCerimonialTable=b.dataset.ct;state.manualSeatGuestId='';renderCerimonial();});
-    const toggleOverviewBtn=c.querySelector('[data-toggle-overview]');if(toggleOverviewBtn)toggleOverviewBtn.onclick=()=>{state.showCerimonialOverview=!state.showCerimonialOverview;renderCerimonial();};
-    const collapseOverviewBtn=c.querySelector('[data-collapse-overview]');if(collapseOverviewBtn)collapseOverviewBtn.onclick=()=>{state.showCerimonialOverview=false;renderCerimonial();};
     c.querySelector('[data-auth-config]').onclick=()=>showView('mesas');
     const redistribute=c.querySelector('[data-redistribute]');if(redistribute)redistribute.onclick=()=>runBusy(async()=>{const r=await A.call('redistributeAuthorities',{eventId:state.eventId},70000);await loadEvent();renderCerimonial();U.toast(`${r.usedTables||0} mesa(s) destinadas às autoridades.`,'success');},'Distribuindo');
     c.querySelector('[data-print-layout]').onclick=()=>printCerimonialLayouts();
