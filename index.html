@@ -184,7 +184,9 @@ tr:hover td{background:#fbfdff}
 .overview-inline-seat.host{border-color:#0f766e;background:#ecfdf5}
 .overview-inline-seat.rank1{border-color:#2563eb;background:#eff6ff}
 .overview-inline-seat.horizontal{height:21px;padding:2px 5px}
+.overview-inline-seat.vertical{width:23px;padding:2px 1px}
 .overview-inline-seat .overview-inline-seat-text{display:block;width:100%;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center}
+.overview-inline-seat.vertical .overview-inline-seat-text{transform:rotate(-90deg);transform-origin:center;width:var(--overview-seat-label-length,70px);max-width:none}
 .overview-legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;font-size:.78rem;color:var(--muted)}
 .overview-overflow-note{font-size:.76rem;color:var(--muted)}
 
@@ -321,7 +323,7 @@ tr:hover td{background:#fbfdff}
       <button data-view="conteudos">Conteúdos</button>
       <button data-view="acessos">Acessos</button>
     </nav>
-    <div class="sidebar-footer">SGCES v1.4.12</div>
+    <div class="sidebar-footer">SGCES v1.5.0</div>
   </aside>
 
   <main class="main">
@@ -398,7 +400,7 @@ tr:hover td{background:#fbfdff}
   }
 
   async function call(action,payload,timeoutMs){
-    const safeRetry=['ping','bootstrap','eventData','receptionData','tvData','guestSearch','guestGroup','tableGuests','publicConfig','nominataData','seatingOverview'];
+    const safeRetry=['ping','bootstrap','receptionData','tvData','guestSearch','guestGroup','tableGuests','publicConfig','seatingOverview'];
     try{
       return await callOnce(action,payload,timeoutMs||45000);
     }catch(err){
@@ -844,6 +846,7 @@ tr:hover td{background:#fbfdff}
 (function(){
   const U=window.SGCES_UI, A=window.SGCES_API;
   const state={events:[],eventId:'',activeEventId:'',postos:[],openEventCount:0,maxOpenEvents:10,data:{event:null,guests:[],tables:[],contents:[],sponsors:[],stats:{}},view:'dashboard',selectedCerimonialTable:'',manualSeatMode:false,manualSeatGuestId:'',cerimonialOverviewOpen:false};
+  let eventLoadPromise=null,eventLoadId='';
 
   document.addEventListener('DOMContentLoaded',init);
 
@@ -923,11 +926,20 @@ tr:hover td{background:#fbfdff}
     });
   }
 
-  async function loadEvent(){
-    if(!state.eventId) return;
-    state.data=await A.call('eventData',{eventId:state.eventId});
-    state.data.guests=(state.data.guests||[]).sort(U.byPrecedence);
-    renderAll();
+  async function loadEvent(render=true){
+    if(!state.eventId)return;
+    const requestedId=String(state.eventId);
+    if(eventLoadPromise&&eventLoadId===requestedId)return eventLoadPromise;
+    eventLoadId=requestedId;
+    eventLoadPromise=(async()=>{
+      const data=await A.call('eventData',{eventId:requestedId},60000);
+      if(String(state.eventId)!==requestedId)return data;
+      state.data=data;
+      state.data.guests=(state.data.guests||[]).sort(U.byPrecedence);
+      if(render)renderView(state.view);
+      return data;
+    })();
+    try{return await eventLoadPromise;}finally{if(eventLoadId===requestedId){eventLoadPromise=null;eventLoadId='';}}
   }
 
   function fillEventSelect(){
@@ -943,7 +955,9 @@ tr:hover td{background:#fbfdff}
   }
 
   function renderAll(){
-    ['dashboard','evento','convidados','mesas','croqui','cerimonial','nominata','conteudos','acessos'].forEach(renderView);
+    // Renderização sob demanda: somente a tela visível é montada.
+    // Isso evita criar todos os painéis e disparar consultas extras a cada atualização.
+    renderView(state.view);
   }
   function renderView(v){
     const fn={dashboard:renderDashboard,evento:renderEvento,convidados:renderConvidados,mesas:renderMesas,croqui:renderCroqui,cerimonial:renderCerimonial,nominata:renderNominata,conteudos:renderConteudos,acessos:renderAcessos}[v];
@@ -1072,7 +1086,7 @@ tr:hover td{background:#fbfdff}
     root.querySelectorAll('[data-reorder-g]').forEach(b=>b.onclick=()=>reorderGuestModal(guestById(b.dataset.reorderG)));
     root.querySelectorAll('[data-swap-g]').forEach(b=>b.onclick=()=>swapTableModal(guestById(b.dataset.swapG)));
     root.querySelectorAll('[data-edit-g]').forEach(b=>b.onclick=()=>guestModal(guestById(b.dataset.editG)));
-    root.querySelectorAll('[data-del-g]').forEach(b=>b.onclick=()=>{const g=guestById(b.dataset.delG);if(confirm(`Excluir ${g.NOME_COMPLETO}?`))runBusy(async()=>{await A.call('deleteGuest',{guestId:g.ID_CONVIDADO});await loadEvent();renderConvidados();U.toast('Convidado excluído.','success');});});
+    root.querySelectorAll('[data-del-g]').forEach(b=>b.onclick=()=>{const g=guestById(b.dataset.delG);if(confirm(`Excluir ${g.NOME_COMPLETO}?`))runBusy(async()=>{await A.call('deleteGuest',{guestId:g.ID_CONVIDADO});await loadEvent(false);renderConvidados();U.toast('Convidado excluído.','success');});});
   }
 
   function guestPositionOptions(g){
@@ -1090,7 +1104,7 @@ tr:hover td{background:#fbfdff}
     const tableSel=U.$('#swapTable',m),guestSel=U.$('#swapGuest',m),info=U.$('#swapInfo',m);
     function refresh(){const tid=tableSel.value,t=tableFor(tid),people=(state.data.guests||[]).filter(x=>String(x.MESA_ID)===String(tid)&&U.normalize(x.RSVP)!=='nao comparecera').sort(U.byPrecedence);guestSel.innerHTML=people.length?people.map(x=>`<option value="${U.esc(x.ID_CONVIDADO)}">${U.esc(U.displayName(x))}</option>`).join(''):'<option value="">Nenhum convidado nesta mesa</option>';info.textContent=t?`${people.length}/${U.num(t.CAPACIDADE)} pessoas em ${t.NOME}. Se o convidado escolhido for titular, o grupo diretamente vinculado acompanha a troca.`:'';}
     tableSel.onchange=refresh;refresh();
-    m.querySelector('[data-save]').onclick=async ev=>{const b=ev.currentTarget,other=guestSel.value;if(!other){U.toast('Escolha com quem fazer a troca.','error');return;}U.setBusy(b,true);try{await A.call('swapGuestTables',{guestId:g.ID_CONVIDADO,otherGuestId:other},65000);m.remove();await loadEvent();renderConvidados();U.toast('Troca de mesas concluída.','success');}catch(err){U.toast(err.message,'error');}finally{U.setBusy(b,false);}};
+    m.querySelector('[data-save]').onclick=async ev=>{const b=ev.currentTarget,other=guestSel.value;if(!other){U.toast('Escolha com quem fazer a troca.','error');return;}U.setBusy(b,true);try{await A.call('swapGuestTables',{guestId:g.ID_CONVIDADO,otherGuestId:other},65000);m.remove();await loadEvent(false);renderConvidados();U.toast('Troca de mesas concluída.','success');}catch(err){U.toast(err.message,'error');}finally{U.setBusy(b,false);}};
   }
 
   function reorderGuestModal(g){
@@ -1109,7 +1123,7 @@ tr:hover td{background:#fbfdff}
       const btn=ev.currentTarget;U.setBusy(btn,true);
       try{
         await A.call('reorderGuest',{guestId:g.ID_CONVIDADO,anchorGuestId:U.$('#rAnchor',m).value,side:U.$('#rSide',m).value});
-        m.remove();await loadEvent();renderConvidados();U.toast('Ordem de precedência atualizada.','success');
+        m.remove();await loadEvent(false);renderConvidados();U.toast('Ordem de precedência atualizada.','success');
       }catch(err){U.toast(err.message,'error');}finally{U.setBusy(btn,false);}
     };
   }
@@ -1162,7 +1176,7 @@ tr:hover td{background:#fbfdff}
         if(!p.nomeCompleto)throw new Error('Informe o nome completo.');
         if(['ANTES','DEPOIS'].includes(place.value)&&!anchor.value)throw new Error('Escolha a pessoa de referência.');
         await A.call('saveGuest',p,55000);
-        m.remove();await loadEvent();renderConvidados();U.toast('Convidado salvo.','success');
+        m.remove();await loadEvent(false);renderConvidados();U.toast('Convidado salvo.','success');
       }catch(err){U.toast(err.message,'error');}finally{U.setBusy(btn,false);}
     };
   }
@@ -1232,7 +1246,7 @@ tr:hover td{background:#fbfdff}
           }
           total+=U.num(r.imported);
         }
-        m.remove();await loadEvent();renderConvidados();U.toast(`${total} convidado(s) importado(s).`,'success');
+        m.remove();await loadEvent(false);renderConvidados();U.toast(`${total} convidado(s) importado(s).`,'success');
       }catch(err){U.toast(err.message,'error');}finally{U.setBusy(btn,false);}
     };
   }
@@ -1587,11 +1601,11 @@ tr:hover td{background:#fbfdff}
 
       const major=at.find(g=>U.normalize(g.NIVEL)==='autoridade')||at[0]||null,total=Math.max(1,U.num(t.CAPACIDADE),at.length),cards=[];
       at.filter(g=>g.ASSENTO).forEach(g=>{
-        const code=String(g.ASSENTO),orientation='horizontal',el=document.createElement('div');
+        const code=String(g.ASSENTO),orientation=U.seatOrientation(t,code,total),el=document.createElement('div');
         const host=String(g.ID_CONVIDADO)===String(t.ANFITRIAO_ID||e.ANFITRIAO_ID||''),rank1=major&&String(g.ID_CONVIDADO)===String(major.ID_CONVIDADO);
         const label=[g.POSTO_GRAD,g.NOME_GUERRA||g.NOME_COMPLETO].filter(Boolean).join(' ');
         el.className='overview-inline-seat '+orientation+(host?' host':'')+(rank1?' rank1':'');
-        el.dataset.orientation=orientation;el.dataset.label=label;el.dataset.code=code;el.dataset.total=String(total);el.dataset.priority=host?'0':rank1?'1':'2';el.title=label;
+        el.dataset.orientation=orientation;el.dataset.label=label;el.dataset.code=code;el.dataset.total=String(total);el.dataset.priority=host?'0':rank1?'1':'2';el.dataset.tableRot=String(U.num(t.ROTACAO,0));el.title=label;
         el.innerHTML=`<span class="overview-inline-seat-text">${U.esc(label)}</span>`;
         floor.appendChild(el);cards.push(el);
       });
@@ -1603,14 +1617,17 @@ tr:hover td{background:#fbfdff}
     let lastScale=-1;
 
     function styleCardForWidth(el,labelLength,scale){
-      const inv=1/Math.max(.001,scale);
-      // Na visão geral, todos os cartões ficam horizontais. A orientação vertical
-      // funciona no detalhe da mesa, mas comprime o texto quando o croqui inteiro
-      // está reduzido. Aqui a prioridade é leitura e aproveitamento do espaço.
-      el.style.width=labelLength+'px';
-      el.style.height=Math.max(19,Math.min(23,19+(scale-1)*1.25))+'px';
+      const inv=1/Math.max(.001,scale),vertical=el.dataset.orientation==='vertical',rot=U.num(el.dataset.tableRot,0);
+      el.style.setProperty('--overview-seat-label-length',labelLength+'px');
+      if(vertical){
+        el.style.width=Math.max(20,Math.min(25,20+(scale-1)*1.6))+'px';
+        el.style.height=labelLength+'px';
+      }else{
+        el.style.width=labelLength+'px';
+        el.style.height=Math.max(19,Math.min(23,19+(scale-1)*1.25))+'px';
+      }
       el.style.fontSize=Math.max(8.1,Math.min(10,8.1+(scale-1)*.7))+'px';
-      el.style.transform=`translate(-50%,-50%) scale(${inv})`;
+      el.style.transform=`translate(-50%,-50%) rotate(${rot}deg) scale(${inv})`;
     }
 
     function positionCard(el,group,scale){
@@ -1691,11 +1708,11 @@ tr:hover td{background:#fbfdff}
     function draw(){const q=U.normalize(search.value),visible=guests.filter(g=>!q||U.normalize([g.POSTO_GRAD,g.NOME_COMPLETO,g.NOME_GUERRA,tableFor(g.MESA_ID)?.NOME].join(' ')).includes(q));list.innerHTML=visible.map(g=>`<label class="member-row"><input type="checkbox" data-member="${U.esc(g.ID_CONVIDADO)}" ${current.has(String(g.ID_CONVIDADO))?'checked':''}><span><strong>${U.esc(U.displayName(g))}</strong><span class="small muted" style="display:block">${U.esc(tableFor(g.MESA_ID)?.NOME||'Sem mesa')}</span></span><span class="small muted">${U.esc(g.RSVP||'')}</span></label>`).join('');list.querySelectorAll('[data-member]').forEach(ch=>ch.onchange=()=>{if(ch.checked)current.add(String(ch.dataset.member));else current.delete(String(ch.dataset.member));refreshCount();});refreshCount();}
     function refreshCount(){count.textContent=`${current.size}/${U.num(table.CAPACIDADE)} pessoa(s) selecionada(s)`;count.style.color=current.size>U.num(table.CAPACIDADE)?'var(--danger)':'';}
     search.oninput=draw;draw();
-    m.querySelector('[data-save]').onclick=async ev=>{const b=ev.currentTarget;if(current.size>U.num(table.CAPACIDADE)){U.toast('A seleção excede a capacidade da mesa.','error');return;}U.setBusy(b,true);try{await A.call('setTableMembers',{eventId:state.eventId,tableId:table.ID_MESA,guestIds:Array.from(current)},65000);m.remove();state.manualSeatGuestId='';await loadEvent();renderCerimonial();U.toast('Composição manual da mesa atualizada.','success');}catch(err){U.toast(err.message,'error');}finally{U.setBusy(b,false);}};
+    m.querySelector('[data-save]').onclick=async ev=>{const b=ev.currentTarget;if(current.size>U.num(table.CAPACIDADE)){U.toast('A seleção excede a capacidade da mesa.','error');return;}U.setBusy(b,true);try{await A.call('setTableMembers',{eventId:state.eventId,tableId:table.ID_MESA,guestIds:Array.from(current)},65000);m.remove();state.manualSeatGuestId='';await loadEvent(false);renderCerimonial();U.toast('Composição manual da mesa atualizada.','success');}catch(err){U.toast(err.message,'error');}finally{U.setBusy(b,false);}};
   }
 
   async function moveManualSeat(table,guestId,seat){
-    await runBusy(async()=>{await A.call('moveTableSeat',{tableId:table.ID_MESA,guestId,targetSeat:seat},55000);state.manualSeatGuestId='';await loadEvent();renderCerimonial();U.toast(seat?'Lugar atualizado.':'Convidado retirado do assento.','success');},'Salvando lugar');
+    await runBusy(async()=>{await A.call('moveTableSeat',{tableId:table.ID_MESA,guestId,targetSeat:seat},55000);state.manualSeatGuestId='';await loadEvent(false);renderCerimonial();U.toast(seat?'Lugar atualizado.':'Convidado retirado do assento.','success');},'Salvando lugar');
   }
 
   function renderCerimonial(){
@@ -1713,7 +1730,7 @@ tr:hover td{background:#fbfdff}
     c.querySelector('[data-toggle-overview]')?.addEventListener('click',()=>{closeCerimonialOverviewPopover(true);state.cerimonialOverviewOpen=!state.cerimonialOverviewOpen;renderCerimonial();});
     c.querySelectorAll('[data-ct]').forEach(b=>b.onclick=()=>{closeCerimonialOverviewPopover(true);state.selectedCerimonialTable=b.dataset.ct;state.manualSeatGuestId='';renderCerimonial();});
     c.querySelector('[data-auth-config]').onclick=()=>showView('mesas');
-    const redistribute=c.querySelector('[data-redistribute]');if(redistribute)redistribute.onclick=()=>runBusy(async()=>{const r=await A.call('redistributeAuthorities',{eventId:state.eventId},70000);await loadEvent();renderCerimonial();U.toast(`${r.usedTables||0} mesa(s) destinadas às autoridades.`,'success');},'Distribuindo');
+    const redistribute=c.querySelector('[data-redistribute]');if(redistribute)redistribute.onclick=()=>runBusy(async()=>{const r=await A.call('redistributeAuthorities',{eventId:state.eventId},70000);await loadEvent(false);renderCerimonial();U.toast(`${r.usedTables||0} mesa(s) destinadas às autoridades.`,'success');},'Distribuindo');
     c.querySelector('[data-print-layout]').onclick=()=>printCerimonialLayouts();
     if(t){
       const renderDetail=()=>U.renderSeating(U.$('#seatingStage',c),t,seated,{editor:state.manualSeatMode,selectedGuestId:state.manualSeatGuestId,onSelectGuest:id=>{state.manualSeatGuestId=String(state.manualSeatGuestId)===String(id)?'':id;renderCerimonial();},onSeatTarget:(id,seat)=>moveManualSeat(t,id,seat)});
@@ -1723,9 +1740,9 @@ tr:hover td{background:#fbfdff}
       c.querySelector('[data-edit-table]').onclick=()=>tableModal(t);
       c.querySelector('[data-members]').onclick=()=>tableMembersModal(t);
       c.querySelector('[data-manual]').onclick=()=>{state.manualSeatMode=!state.manualSeatMode;state.manualSeatGuestId='';renderCerimonial();};
-      c.querySelector('[data-toggle-standard]').onclick=()=>runBusy(async()=>{await A.call('saveTable',{ID_MESA:t.ID_MESA,eventId:state.eventId,usaIca:U.yes(t.USA_ICA)?'NAO':'SIM'},55000);await loadEvent();renderCerimonial();U.toast('Configuração de composição padrão atualizada.','success');});
-      const compose=c.querySelector('[data-compose]');if(compose)compose.onclick=()=>runBusy(async()=>{await A.call('composeTable',{tableId:t.ID_MESA},65000);state.manualSeatGuestId='';await loadEvent();renderCerimonial();U.toast('Mesa composta. Você pode ajustar manualmente qualquer lugar.','success');});
-      c.querySelector('[data-clear]').onclick=()=>runBusy(async()=>{await A.call('clearTableSeats',{tableId:t.ID_MESA},55000);state.manualSeatGuestId='';await loadEvent();renderCerimonial();});
+      c.querySelector('[data-toggle-standard]').onclick=()=>runBusy(async()=>{await A.call('saveTable',{ID_MESA:t.ID_MESA,eventId:state.eventId,usaIca:U.yes(t.USA_ICA)?'NAO':'SIM'},55000);await loadEvent(false);renderCerimonial();U.toast('Configuração de composição padrão atualizada.','success');});
+      const compose=c.querySelector('[data-compose]');if(compose)compose.onclick=()=>runBusy(async()=>{await A.call('composeTable',{tableId:t.ID_MESA},65000);state.manualSeatGuestId='';await loadEvent(false);renderCerimonial();U.toast('Mesa composta. Você pode ajustar manualmente qualquer lugar.','success');});
+      c.querySelector('[data-clear]').onclick=()=>runBusy(async()=>{await A.call('clearTableSeats',{tableId:t.ID_MESA},55000);state.manualSeatGuestId='';await loadEvent(false);renderCerimonial();});
       const unseat=c.querySelector('[data-unseat]');if(unseat)unseat.onclick=()=>moveManualSeat(t,state.manualSeatGuestId,'');
     }
   }
@@ -1782,8 +1799,8 @@ tr:hover td{background:#fbfdff}
     c.querySelector('[data-add-nom]').onclick=()=>nominataSelectModal(data,c);
     c.querySelector('[data-add-msg]').onclick=()=>nominataMessageModal(data,null,c);
     c.querySelector('[data-print]').onclick=()=>printNominata(data);
-    c.querySelectorAll('[data-remove-nom]').forEach(b=>b.onclick=()=>runBusy(async()=>{await A.call('setNominataGuest',{eventId:state.eventId,guestId:b.dataset.removeNom,selected:false});await loadEvent();await loadNominataView(c);}));
-    c.querySelectorAll('[data-check-nom]').forEach(b=>b.onclick=()=>{const g=guestById(b.dataset.checkNom);runBusy(async()=>{await A.call('checkIn',{guestId:g.ID_CONVIDADO,present:String(g.CHECKIN).toUpperCase()!=='PRESENTE'});await loadEvent();await loadNominataView(c);});});
+    c.querySelectorAll('[data-remove-nom]').forEach(b=>b.onclick=()=>runBusy(async()=>{await A.call('setNominataGuest',{eventId:state.eventId,guestId:b.dataset.removeNom,selected:false});await loadEvent(false);await loadNominataView(c);}));
+    c.querySelectorAll('[data-check-nom]').forEach(b=>b.onclick=()=>{const g=guestById(b.dataset.checkNom);runBusy(async()=>{await A.call('checkIn',{guestId:g.ID_CONVIDADO,present:String(g.CHECKIN).toUpperCase()!=='PRESENTE'});await loadEvent(false);await loadNominataView(c);});});
     c.querySelectorAll('[data-edit-msg]').forEach(b=>b.onclick=()=>nominataMessageModal(data,(data.messages||[]).find(x=>String(x.ID_ITEM)===String(b.dataset.editMsg)),c));
     c.querySelectorAll('[data-del-msg]').forEach(b=>b.onclick=()=>{if(confirm('Excluir esta mensagem?'))runBusy(async()=>{await A.call('deleteNominataMessage',{id:b.dataset.delMsg});await loadNominataView(c);});});
   }
@@ -1804,7 +1821,7 @@ tr:hover td{background:#fbfdff}
       const ids=Array.from(m.querySelectorAll('[data-nom-id]:checked')).map(x=>x.dataset.nomId);
       if(!ids.length){U.toast('Selecione ao menos uma pessoa.','error');return;}
       const btn=ev.currentTarget;U.setBusy(btn,true);
-      try{await A.call('setNominataGuest',{eventId:state.eventId,guestIds:ids,selected:true});m.remove();await loadEvent();await loadNominataView(c);U.toast('Nominata atualizada.','success');}
+      try{await A.call('setNominataGuest',{eventId:state.eventId,guestIds:ids,selected:true});m.remove();await loadEvent(false);await loadNominataView(c);U.toast('Nominata atualizada.','success');}
       catch(err){U.toast(err.message,'error');}finally{U.setBusy(btn,false);}
     };
   }
