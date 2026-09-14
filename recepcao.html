@@ -118,6 +118,8 @@ tr:hover td{background:#fbfdff}
 .floor-table.rect{border-radius:9px}
 .floor-table.u{border-radius:10px;border-top-color:transparent;background:transparent;box-shadow:none}
 .floor-table.dragging{cursor:grabbing;z-index:10;box-shadow:0 12px 28px rgba(15,23,42,.18)}
+.floor-table .floor-table-label{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;max-width:92%;line-height:1.04;text-align:center}
+.floor-table .floor-table-name{font-weight:800;display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .floor-table .occ{display:block;font-size:.72rem;font-weight:700;margin-top:2px;color:#52708f}
 .floor-table.highlight{outline:6px solid rgba(22,163,74,.28);background:#dcfce7!important;border-color:#16a34a!important;color:#14532d!important;z-index:6}
 .floor-table.full{background:#fff1f2;border-color:#e11d48;color:#881337}
@@ -219,6 +221,7 @@ tr:hover td{background:#fbfdff}
 @media(max-width:820px){.public-header{position:sticky;top:0;z-index:40}.reception-main{padding:12px}.floor{min-width:0}.reception-search{font-size:1.06rem;padding:14px}.detail-head{grid-template-columns:72px 1fr}.detail-head .avatar{width:72px;height:72px}}
 @media(max-width:520px){.public-header h1{font-size:1.4rem}.public-header p{max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.reception-main{padding:10px}.reception-search-card{padding:14px}.card{border-radius:13px}.detail-table{font-size:1.65rem}.floor-wrap{margin-left:-4px;margin-right:-4px}}
 
+.public-header.has-banner{min-height:170px;background-size:cover;background-position:center;background-repeat:no-repeat;align-items:flex-start;justify-content:flex-end}.public-header.has-banner>div:first-child{display:none}.public-header.has-banner .actions{margin-left:auto}.nominata-item{cursor:pointer;width:100%;text-align:left;color:inherit;font:inherit}.nominata-item:hover{background:#f8fbff;border-color:#9bb2cf}.nominata-photo{width:54px;height:54px;border-radius:10px;background:#e9eef5;display:flex;align-items:center;justify-content:center;overflow:hidden;color:#7c899b;font-size:.68rem;font-weight:800;text-align:center;flex:0 0 auto}.nominata-photo img{width:100%;height:100%;object-fit:cover}.nominata-main{display:flex;align-items:center;gap:11px;min-width:0}.nominata-main strong{display:block;line-height:1.18}.nom-popup-head{display:grid;grid-template-columns:180px 1fr;gap:18px;align-items:start}.nom-popup-photo{width:180px;height:220px;border-radius:14px;background:#e9eef5;display:flex;align-items:center;justify-content:center;overflow:hidden;color:#7c899b;font-weight:800}.nom-popup-photo img{width:100%;height:100%;object-fit:cover}.nom-popup-group{display:grid;gap:8px;margin-top:14px}.nom-popup-group label{display:flex;gap:10px;align-items:center;padding:10px;border:1px solid var(--line);border-radius:10px}.nom-popup-group input{width:20px;height:20px}@media(max-width:620px){.public-header.has-banner{min-height:120px;position:relative}.nom-popup-head{grid-template-columns:1fr}.nom-popup-photo{width:140px;height:170px}.nominata-item{grid-template-columns:1fr auto}.nominata-main{grid-column:1/-1}}
 </style>
 </head>
 <body class="public-shell">
@@ -370,6 +373,41 @@ tr:hover td{background:#fbfdff}
     return `<span class="badge ${cls}">${esc(v||'—')}</span>`;
   }
 
+  function fitTextToBox_(node,min,max,step){
+    if(!node)return;
+    min=num(min,8);max=num(max,14);step=num(step,.4);
+    node.style.fontSize=max+'px';
+    let size=max,guard=0;
+    while(size>min&&guard++<24&&(node.scrollWidth>node.clientWidth+1||node.scrollHeight>node.clientHeight+1)){
+      size-=step;node.style.fontSize=size+'px';
+    }
+  }
+
+  function fitFloorTableContent_(el){
+    if(!el)return;
+    const label=el.querySelector('.floor-table-label');
+    const name=el.querySelector('.floor-table-name');
+    const occ=el.querySelector('.occ');
+    if(!label||!name)return;
+    const shape=String(el.dataset.shape||'REDONDA').toUpperCase();
+    const w=el.clientWidth||0,h=el.clientHeight||0;
+    if(shape==='REDONDA'){
+      const size=Math.max(9,Math.min(18,Math.min(w,h)*0.17));
+      name.style.fontSize=size+'px';
+      if(occ)occ.style.fontSize=Math.max(8,Math.min(13,size*.72))+'px';
+    }else if(shape==='U'){
+      const size=Math.max(9,Math.min(17,Math.min(w,h)*0.15));
+      name.style.fontSize=size+'px';
+      if(occ)occ.style.fontSize=Math.max(8,Math.min(12,size*.72))+'px';
+    }else{
+      const size=Math.max(9,Math.min(17,Math.min(w*.09,h*.42)));
+      name.style.fontSize=size+'px';
+      if(occ)occ.style.fontSize=Math.max(8,Math.min(12,size*.72))+'px';
+    }
+    fitTextToBox_(name,7.5,parseFloat(name.style.fontSize)||12,.35);
+    if(occ)fitTextToBox_(occ,7,parseFloat(occ.style.fontSize)||10,.35);
+  }
+
   function renderFloor(container,tables,opts){
     opts=opts||{};
     container.innerHTML='';
@@ -398,7 +436,7 @@ tr:hover td{background:#fbfdff}
       if(locked)el.classList.add('locked');
       if(selectable)el.classList.add('selectable');
       if(!locked&&num(t.VAGAS,1)<=0&&num(t.CAPACIDADE)>0)el.classList.add('full');
-      el.dataset.id=t.ID_MESA;el.dataset.shape=shape;if(t.OBS)el.title=String(t.OBS);
+      el.dataset.id=t.ID_MESA;el.dataset.shape=shape;el.dataset.rot=num(t.ROTACAO,0);if(t.OBS)el.title=String(t.OBS);
       const w=num(t.W,shape==='RETANGULAR'?18:10);
       const h=shape==='REDONDA'?w*ratio:num(t.H,shape==='RETANGULAR'?8:10);
       el.style.left=num(t.X,50)+'%';el.style.top=num(t.Y,50)+'%';el.style.width=w+'%';el.style.height=h+'%';
@@ -410,10 +448,15 @@ tr:hover td{background:#fbfdff}
       }else if(typeof t.OCUPACAO!=='undefined'){
         occ=`<span class="occ">${num(t.OCUPACAO)}/${num(t.CAPACIDADE)}${typeof t.VAGAS!=='undefined'?' • '+num(t.VAGAS)+' vaga(s)':''}</span>`;
       }
-      el.innerHTML=`<div>${esc(t.NOME||('Mesa '+t.NUMERO))}${occ}</div>${opts.editor?'<span class="resize-handle" title="Redimensionar"></span>':''}`;
+      el.innerHTML=`<div class="floor-table-label"><span class="floor-table-name">${esc(t.NOME||('Mesa '+t.NUMERO))}</span>${occ}</div>${opts.editor?'<span class="resize-handle" title="Redimensionar"></span>':''}`;
       if(opts.onClick)el.addEventListener('click',ev=>{if(locked)return;opts.onClick(t,el,ev);});
-      container.appendChild(el);
+      container.appendChild(el);fitFloorTableContent_(el);
     });
+    if(typeof ResizeObserver!=='undefined'){
+      try{container._sgcesFloorRO&&container._sgcesFloorRO.disconnect();}catch(err){}
+      const ro=new ResizeObserver(()=>{container.querySelectorAll('.floor-table').forEach(fitFloorTableContent_);});
+      ro.observe(container);container._sgcesFloorRO=ro;
+    }
   }
 
   function seatCoordinates(table, seatCode, total){
@@ -532,10 +575,16 @@ tr:hover td{background:#fbfdff}
     try{
       const fresh=await A.call('receptionData',{eventId},45000);
       data=fresh||{event:null,tables:[],nominata:[]};
-      U.$('#eventName').textContent=data.event?data.event.NOME:(eventId?'Evento não encontrado':'Nenhum evento ativo');
+      applyEventBrand(data.event||null);
       if(currentView!=='detail')renderCurrent();
     }catch(e){U.toast(e.message,'error');}
     finally{loading=false;}
+  }
+
+  function applyEventBrand(e){
+    e=e||{};const header=U.$('.public-header');
+    if(e.BANNER_URL){header.classList.add('has-banner');header.style.backgroundImage=`url("${U.driveImage(e.BANNER_URL).replace(/"/g,'%22')}")`;U.$('#eventName').textContent='';}
+    else{header.classList.remove('has-banner');header.style.backgroundImage='';U.$('#eventName').textContent=e.NOME||(eventId?'Evento não encontrado':'Nenhum evento ativo');}
   }
 
   async function searchName(){
@@ -582,16 +631,19 @@ tr:hover td{background:#fbfdff}
     if(t)U.renderFloor(U.$('#detailFloor'),groupData.tables||data.tables||[],{highlightTableId:t.ID_MESA,backgroundUrl:(groupData.event||data.event||{}).CROQUI_URL});
   }
 
-  async function toggleCheck(id){
-    const g=(data.nominata||[]).find(x=>String(x.ID_CONVIDADO)===String(id));if(!g)return;
-    try{const u=await A.call('checkIn',{guestId:id,present:String(g.CHECKIN).toUpperCase()!=='PRESENTE'},35000);if(u)Object.assign(g,u);renderNominata();}
-    catch(e){U.toast(e.message,'error');}
+  async function openNominataGroup(id){
+    try{
+      const gd=await A.call('guestGroup',{eventId,guestId:id,lite:true},40000),g=gd.matched||gd.titular,group=(gd.group||[]).slice().sort(U.byPrecedence),t=gd.table||table((gd.titular||{}).MESA_ID);
+      const photo=g&&g.FOTO_URL?`<img src="${U.esc(U.driveImage(g.FOTO_URL))}" alt="Foto">`:'SEM FOTO';
+      const m=U.modal('Recepção da Nominata',`<div class="nom-popup-head"><div class="nom-popup-photo">${photo}</div><div><h3 style="margin:0 0 6px">${U.esc([g&&g.POSTO_GRAD,g&&g.NOME_COMPLETO].filter(Boolean).join(' '))}</h3>${t?`<div class="muted">Mesa: <strong>${U.esc(t.NOME)}</strong></div>`:''}<div class="small muted" style="margin-top:8px">Selecione quem chegou junto com esta autoridade.</div></div></div><div class="nom-popup-group">${group.map(x=>{const arrived=String(x.CHECKIN).toUpperCase()==='PRESENTE';return `<label><input type="checkbox" data-nom-group="${U.esc(x.ID_CONVIDADO)}" ${arrived?'checked disabled':''}><span><strong>${U.esc([x.POSTO_GRAD,x.NOME_COMPLETO].filter(Boolean).join(' '))}</strong>${arrived?' <span class="badge success">CHEGOU</span>':''}</span></label>`;}).join('')}</div>`,`<button class="btn" data-close>Fechar</button><button class="btn btn-success" data-confirm-nom>Confirmar selecionados</button>`);
+      const btn=U.$('[data-confirm-nom]',m);btn.onclick=async()=>{const ids=Array.from(U.$$('input[data-nom-group]:checked:not(:disabled)',m)).map(x=>x.dataset.nomGroup);if(!ids.length){U.toast('Marque quem chegou.','error');return;}U.setBusy(btn,true);try{const r=await A.call('groupCheckIn',{eventId,guestId:id,guestIds:ids,compact:true},40000),updates=(r&&r.guests)||[];updates.forEach(u=>{const ni=(data.nominata||[]).findIndex(x=>String(x.ID_CONVIDADO)===String(u.ID_CONVIDADO));if(ni>=0)data.nominata[ni]={...data.nominata[ni],...u};});m.remove();renderNominata();U.toast('Chegada registrada.','success');}catch(e){U.toast(e.message,'error');}finally{U.setBusy(btn,false);}};
+    }catch(e){U.toast(e.message,'error');}
   }
 
   function renderNominata(){
     showOnly('nominataView');const list=(data.nominata||[]).slice().sort(U.byPrecedence);
-    U.$('#nominataView').innerHTML=`<button class="btn btn-sm view-back" data-back>← Voltar à busca</button><div class="card"><div class="page-heading"><div><h2 style="font-size:1.65rem">Nominata</h2><p>${list.filter(x=>String(x.CHECKIN).toUpperCase()==='PRESENTE').length}/${list.length} chegaram.</p></div></div><div class="nominata-list">${list.length?list.map(g=>`<div class="nominata-item"><div><strong>${U.esc([g.POSTO_GRAD,g.NOME_COMPLETO].filter(Boolean).join(' '))}</strong></div>${String(g.CHECKIN).toUpperCase()==='PRESENTE'?'<span class="badge success">CHEGOU</span>':'<span class="badge warning">AGUARDANDO</span>'}<button class="btn btn-sm" data-ncheck="${U.esc(g.ID_CONVIDADO)}">${String(g.CHECKIN).toUpperCase()==='PRESENTE'?'↩':'✓'}</button></div>`).join(''):'<p class="muted">Nenhuma pessoa na Nominata.</p>'}</div></div>`;
-    U.$('[data-back]',U.$('#nominataView')).onclick=()=>showView('search');U.$$('#nominataView [data-ncheck]').forEach(b=>b.onclick=()=>toggleCheck(b.dataset.ncheck));
+    U.$('#nominataView').innerHTML=`<button class="btn btn-sm view-back" data-back>← Voltar à busca</button><div class="card"><div class="page-heading"><div><h2 style="font-size:1.65rem">Nominata</h2><p>${list.filter(x=>String(x.CHECKIN).toUpperCase()==='PRESENTE').length}/${list.length} chegaram.</p></div></div><div class="nominata-list">${list.length?list.map(g=>`<button class="nominata-item" data-nperson="${U.esc(g.ID_CONVIDADO)}"><div class="nominata-main"><div class="nominata-photo">${g.FOTO_URL?`<img src="${U.esc(U.driveImage(g.FOTO_URL))}" alt="">`:'SEM FOTO'}</div><div><strong>${U.esc([g.POSTO_GRAD,g.NOME_COMPLETO].filter(Boolean).join(' '))}</strong></div></div>${String(g.CHECKIN).toUpperCase()==='PRESENTE'?'<span class="badge success">CHEGOU</span>':'<span class="badge warning">AGUARDANDO</span>'}</button>`).join(''):'<p class="muted">Nenhuma pessoa na Nominata.</p>'}</div></div>`;
+    U.$('[data-back]',U.$('#nominataView')).onclick=()=>showView('search');U.$$('#nominataView [data-nperson]').forEach(b=>b.onclick=()=>openNominataGroup(b.dataset.nperson));
   }
 
   function renderCroqui(){

@@ -325,7 +325,7 @@ tr:hover td{background:#fbfdff}
       <button data-view="conteudos">Conteúdos</button>
       <button data-view="acessos">Acessos</button>
     </nav>
-    <div class="sidebar-footer">SGCES v1.5.2</div>
+    <div class="sidebar-footer">SGCES v1.5.3</div>
   </aside>
 
   <main class="main">
@@ -877,6 +877,19 @@ tr:hover td{background:#fbfdff}
           await loadEvent();
           if(state.view==='croqui')renderCroqui();
           U.toast('Croqui salvo.','success');
+        }else if(m.kind==='BANNER'){
+          await loadEvent();
+          if(state.view==='conteudos')renderConteudos();
+          U.toast('Banner salvo.','success');
+        }else if(m.kind==='CONTEUDO'){
+          const input=U.$('#cUrl');if(input&&m.data&&m.data.url)input.value=m.data.url;
+          U.toast('Arquivo enviado. Clique em Salvar.','success');
+        }else if(m.kind==='LOGO'){
+          const input=U.$('#sLogo');if(input&&m.data&&m.data.url)input.value=m.data.url;
+          U.toast('Logo enviada. Clique em Salvar.','success');
+        }else if(m.kind==='QR'){
+          const input=U.$('#cUrl');if(input&&m.data&&m.data.url)input.value=m.data.url;
+          U.toast('QR enviado. Clique em Salvar.','success');
         }
       }catch(err){U.toast(err.message||String(err),'error');}
     });
@@ -1638,7 +1651,7 @@ tr:hover td{background:#fbfdff}
       shape.style.left=U.num(t.X,50)+'%';shape.style.top=U.num(t.Y,50)+'%';shape.style.width=w+'%';shape.style.height=h+'%';shape.style.transform=`translate(-50%,-50%) rotate(${U.num(t.ROTACAO,0)}deg)`;
       const at=activeGuests.filter(g=>String(g.MESA_ID)===String(t.ID_MESA)).sort(U.byPrecedence),unseated=at.filter(g=>!g.ASSENTO).length;
       const orient=tableOrientationInfo(t,at),rot=U.num(t.ROTACAO,0),orientIcon=orient.isPrincipal?'★':orient.dir,orientMajor=orient.major?[orient.major.POSTO_GRAD,orient.major.NOME_GUERRA||orient.major.NOME_COMPLETO].filter(Boolean).join(' '):'';
-      shape.innerHTML=`<span class="overview-table-name">${U.esc(t.NOME)}<span class="overview-table-meta">${at.length}/${U.num(t.CAPACIDADE)}${unseated?` • ${unseated} sem lugar`:''}</span></span>${orientIcon||orientMajor?`<span class="overview-direction-tag ${orient.isPrincipal?'principal':''}" style="transform:translateX(-50%) rotate(${-rot}deg)" title="${U.esc(orient.text)}">${U.esc(orientIcon)} ${U.esc(orientMajor)}</span>`:''}`;
+      shape.innerHTML=`<span class="overview-table-name">${U.esc(t.NOME)}<span class="overview-table-meta">${at.length}/${U.num(t.CAPACIDADE)}${unseated?` • ${unseated} sem lugar`:''}</span></span>`;
       shape.title=`${t.NOME} — ${at.length}/${U.num(t.CAPACIDADE)} pessoas.${orient.text?' '+orient.text+'.':''} Passe o mouse ou clique para ver a disposição completa.`;
       let hoverTimer=null;
       shape.addEventListener('mouseenter',()=>{if(hoverTimer)clearTimeout(hoverTimer);hoverTimer=setTimeout(()=>{if(!overviewPopoverPinned)showCerimonialOverviewPopover(t,shape,false);},130);});
@@ -1943,19 +1956,32 @@ tr:hover td{background:#fbfdff}
 
   function renderConteudos(){
     const c=U.$('[data-section="conteudos"]');if(requireEvent(c,'Conteúdos'))return;
-    const cont=state.data.contents||[], sp=state.data.sponsors||[];
-    c.innerHTML=heading('Conteúdos','Arquivos do portal do convidado, banner e patrocinadores.',`<button class="btn" data-add-content>Adicionar conteúdo</button><button class="btn btn-primary" data-add-sponsor>Adicionar patrocinador</button>`)+`
-      <div class="grid grid-2"><div class="card"><h3>Arquivos e informações</h3>${cont.length?`<div class="table-wrap"><table><thead><tr><th>Tipo</th><th>Título</th><th>Visível</th><th></th></tr></thead><tbody>${cont.map(x=>`<tr><td>${U.esc(x.TIPO)}</td><td><a href="${U.esc(x.URL)}" target="_blank">${U.esc(x.TITULO)}</a></td><td>${U.badgeStatus(x.VISIVEL)}</td><td><button class="btn btn-sm" data-ec="${U.esc(x.ID_CONTEUDO)}">Editar</button> <button class="btn btn-sm btn-danger" data-dc="${U.esc(x.ID_CONTEUDO)}">Excluir</button></td></tr>`).join('')}</tbody></table></div>`:'<p class="muted">Nenhum conteúdo.</p>'}</div>
+    const cont=state.data.contents||[], sp=state.data.sponsors||[], e=state.data.event||{};
+    const qr=cont.find(x=>['qr checkin','qr_checkin'].includes(U.normalize(x.TIPO)));
+    c.innerHTML=heading('Conteúdos','',`<button class="btn" data-add-content>Adicionar conteúdo</button><button class="btn btn-primary" data-add-sponsor>Adicionar patrocinador</button>`)+`
+      <div class="grid grid-2">
+        <div class="card"><h3>Banner do evento</h3>${e.BANNER_URL?`<img src="${U.esc(U.driveImage(e.BANNER_URL))}" alt="Banner" style="width:100%;max-height:240px;object-fit:contain;border-radius:12px;background:#f8fafc;margin-bottom:10px">`:'<p class="muted">Nenhum banner.</p>'}<iframe class="upload-frame" style="height:82px" title="Enviar banner" src="${U.esc(A.uploaderUrl('banner',state.eventId))}"></iframe>${e.BANNER_URL?'<button class="btn btn-sm btn-danger" data-remove-banner>Remover banner</button>':''}</div>
+        <div class="card"><h3>QR de check-in</h3>${qr?`<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap"><img src="${U.esc(U.driveImage(qr.URL))}" alt="QR" style="width:120px;height:120px;object-fit:contain;border:1px solid var(--line);border-radius:12px;background:#fff"><div><strong>${U.esc(qr.TITULO||'QR de check-in')}</strong><div style="margin-top:8px"><button class="btn btn-sm" data-ec="${U.esc(qr.ID_CONTEUDO)}">Editar</button> <button class="btn btn-sm btn-danger" data-dc="${U.esc(qr.ID_CONTEUDO)}">Excluir</button></div></div></div>`:'<div><p class="muted">Envie a imagem do QR que será exibida na TV.</p><button class="btn btn-sm" data-add-qr>Configurar QR</button></div>'}</div>
+      </div>
+      <div class="grid grid-2" style="margin-top:14px"><div class="card"><h3>Arquivos e informações</h3>${cont.filter(x=>!['qr checkin','qr_checkin'].includes(U.normalize(x.TIPO))).length?`<div class="table-wrap"><table><thead><tr><th>Tipo</th><th>Título</th><th>Visível</th><th></th></tr></thead><tbody>${cont.filter(x=>!['qr checkin','qr_checkin'].includes(U.normalize(x.TIPO))).map(x=>`<tr><td>${U.esc(x.TIPO)}</td><td><a href="${U.esc(x.URL)}" target="_blank">${U.esc(x.TITULO)}</a></td><td>${U.badgeStatus(x.VISIVEL)}</td><td><button class="btn btn-sm" data-ec="${U.esc(x.ID_CONTEUDO)}">Editar</button> <button class="btn btn-sm btn-danger" data-dc="${U.esc(x.ID_CONTEUDO)}">Excluir</button></td></tr>`).join('')}</tbody></table></div>`:'<p class="muted">Nenhum conteúdo.</p>'}</div>
       <div class="card"><h3>Patrocinadores / apoiadores</h3>${sp.length?`<div class="sponsor-row">${sp.map(x=>`<div style="text-align:center"><img src="${U.esc(U.driveImage(x.LOGO_URL))}" alt="${U.esc(x.NOME)}"><div class="small">${U.esc(x.NOME)}</div><div><button class="btn btn-sm" data-es="${U.esc(x.ID_PATROCINADOR)}">Editar</button> <button class="btn btn-sm btn-danger" data-ds="${U.esc(x.ID_PATROCINADOR)}">Excluir</button></div></div>`).join('')}</div>`:'<p class="muted">Nenhum patrocinador.</p>'}</div></div>`;
-    c.querySelector('[data-add-content]').onclick=()=>contentModal();c.querySelector('[data-add-sponsor]').onclick=()=>sponsorModal();
+    c.querySelector('[data-add-content]').onclick=()=>contentModal();c.querySelector('[data-add-sponsor]').onclick=()=>sponsorModal();const aq=c.querySelector('[data-add-qr]');if(aq)aq.onclick=()=>contentModal({TIPO:'QR_CHECKIN',TITULO:'QR de check-in',VISIVEL:'SIM'});
     c.querySelectorAll('[data-ec]').forEach(b=>b.onclick=()=>contentModal(cont.find(x=>x.ID_CONTEUDO===b.dataset.ec)));
     c.querySelectorAll('[data-dc]').forEach(b=>b.onclick=()=>{if(confirm('Excluir conteúdo?'))runBusy(async()=>{await A.call('deleteContent',{id:b.dataset.dc});await loadEvent();});});
     c.querySelectorAll('[data-es]').forEach(b=>b.onclick=()=>sponsorModal(sp.find(x=>x.ID_PATROCINADOR===b.dataset.es)));
     c.querySelectorAll('[data-ds]').forEach(b=>b.onclick=()=>{if(confirm('Excluir patrocinador?'))runBusy(async()=>{await A.call('deleteSponsor',{id:b.dataset.ds});await loadEvent();});});
+    const rb=c.querySelector('[data-remove-banner]');if(rb)rb.onclick=()=>runBusy(async()=>{await A.call('saveEvent',{id:state.eventId,bannerUrl:''});await loadEvent();renderConteudos();});
   }
 
-  function contentModal(x){x=x||{};const m=U.modal(x.ID_CONTEUDO?'Editar conteúdo':'Adicionar conteúdo',`<div class="form-grid">${field('Título','cTit',x.TITULO)}${selectField('Tipo','cTipo',['CARDAPIO','PROGRAMA','HOMENAGEM','ARQUIVO'],x.TIPO||'ARQUIVO')}<div class="field" style="grid-column:1/-1"><label>URL do arquivo / página</label><input id="cUrl" value="${U.esc(x.URL||'')}"></div>${field('Ordem','cOrd',x.ORDEM||0,'number')}${selectField('Visível','cVis',['SIM','NAO'],x.VISIVEL||'SIM')}</div>`,`<button class="btn" data-close>Cancelar</button><button class="btn btn-primary" data-save>Salvar</button>`);m.querySelector('[data-save]').onclick=async e=>{const b=e.currentTarget;U.setBusy(b,true);try{await A.call('saveContent',{id:x.ID_CONTEUDO||'',eventId:state.eventId,titulo:U.$('#cTit',m).value.trim(),tipo:U.$('#cTipo',m).value,url:U.$('#cUrl',m).value.trim(),ordem:U.$('#cOrd',m).value,visivel:U.$('#cVis',m).value});m.remove();await loadEvent();}catch(err){U.toast(err.message,'error');}finally{U.setBusy(b,false);}};}
-  function sponsorModal(x){x=x||{};const m=U.modal(x.ID_PATROCINADOR?'Editar patrocinador':'Adicionar patrocinador',`<div class="form-grid">${field('Nome','sNome',x.NOME)}<div class="field"><label>URL da logo</label><input id="sLogo" value="${U.esc(x.LOGO_URL||'')}"></div><div class="field" style="grid-column:1/-1"><label>Site (opcional)</label><input id="sSite" value="${U.esc(x.URL_SITE||'')}"></div>${field('Ordem','sOrd',x.ORDEM||0,'number')}${selectField('Visível','sVis',['SIM','NAO'],x.VISIVEL||'SIM')}</div>`,`<button class="btn" data-close>Cancelar</button><button class="btn btn-primary" data-save>Salvar</button>`);m.querySelector('[data-save]').onclick=async e=>{const b=e.currentTarget;U.setBusy(b,true);try{await A.call('saveSponsor',{id:x.ID_PATROCINADOR||'',eventId:state.eventId,nome:U.$('#sNome',m).value.trim(),logoUrl:U.$('#sLogo',m).value.trim(),urlSite:U.$('#sSite',m).value.trim(),ordem:U.$('#sOrd',m).value,visivel:U.$('#sVis',m).value});m.remove();await loadEvent();}catch(err){U.toast(err.message,'error');}finally{U.setBusy(b,false);}};}
+  function contentModal(x){
+    x=x||{};const currentType=x.TIPO||'ARQUIVO';
+    const m=U.modal(x.ID_CONTEUDO?'Editar conteúdo':'Adicionar conteúdo',`<div class="form-grid">${field('Título','cTit',x.TITULO)}${selectField('Tipo','cTipo',['CARDAPIO','PROGRAMA','HOMENAGEM','INFORMACOES','ARQUIVO','QR_CHECKIN'],currentType)}<div class="field" style="grid-column:1/-1"><label>Enviar arquivo</label><iframe id="contentUploader" class="upload-frame" style="height:82px" title="Enviar arquivo" src="${U.esc(A.uploaderUrl(currentType==='QR_CHECKIN'?'qr':'conteudo',state.eventId))}"></iframe></div><div class="field" style="grid-column:1/-1"><label>URL</label><input id="cUrl" value="${U.esc(x.URL||'')}" placeholder="Preenchida automaticamente após o envio"></div>${field('Ordem','cOrd',x.ORDEM||0,'number')}${selectField('Visível','cVis',['SIM','NAO'],x.VISIVEL||'SIM')}</div>`,`<button class="btn" data-close>Cancelar</button><button class="btn btn-primary" data-save>Salvar</button>`);
+    const typeSel=U.$('#cTipo',m),frame=U.$('#contentUploader',m);typeSel.onchange=()=>{frame.src=A.uploaderUrl(typeSel.value==='QR_CHECKIN'?'qr':'conteudo',state.eventId);};
+    m.querySelector('[data-save]').onclick=async e=>{const b=e.currentTarget;U.setBusy(b,true);try{await A.call('saveContent',{id:x.ID_CONTEUDO||'',eventId:state.eventId,titulo:U.$('#cTit',m).value.trim()||typeSel.value,tipo:typeSel.value,url:U.$('#cUrl',m).value.trim(),ordem:U.$('#cOrd',m).value,visivel:U.$('#cVis',m).value});m.remove();await loadEvent();renderConteudos();}catch(err){U.toast(err.message,'error');}finally{U.setBusy(b,false);}};
+  }
+  function sponsorModal(x){
+    x=x||{};const m=U.modal(x.ID_PATROCINADOR?'Editar patrocinador':'Adicionar patrocinador',`<div class="form-grid">${field('Nome','sNome',x.NOME)}<div class="field" style="grid-column:1/-1"><label>Enviar logo</label><iframe class="upload-frame" style="height:82px" title="Enviar logo" src="${U.esc(A.uploaderUrl('logo',state.eventId))}"></iframe></div><div class="field"><label>URL da logo</label><input id="sLogo" value="${U.esc(x.LOGO_URL||'')}" placeholder="Preenchida automaticamente"></div><div class="field" style="grid-column:1/-1"><label>Site (opcional)</label><input id="sSite" value="${U.esc(x.URL_SITE||'')}"></div>${field('Ordem','sOrd',x.ORDEM||0,'number')}${selectField('Visível','sVis',['SIM','NAO'],x.VISIVEL||'SIM')}</div>`,`<button class="btn" data-close>Cancelar</button><button class="btn btn-primary" data-save>Salvar</button>`);m.querySelector('[data-save]').onclick=async e=>{const b=e.currentTarget;U.setBusy(b,true);try{await A.call('saveSponsor',{id:x.ID_PATROCINADOR||'',eventId:state.eventId,nome:U.$('#sNome',m).value.trim(),logoUrl:U.$('#sLogo',m).value.trim(),urlSite:U.$('#sSite',m).value.trim(),ordem:U.$('#sOrd',m).value,visivel:U.$('#sVis',m).value});m.remove();await loadEvent();renderConteudos();}catch(err){U.toast(err.message,'error');}finally{U.setBusy(b,false);}};
+  }
 
   function renderAcessos(){
     const c=U.$('[data-section="acessos"]');if(requireEvent(c,'Acessos'))return;
