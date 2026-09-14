@@ -146,7 +146,7 @@ tr:hover td{background:#fbfdff}
 .seat.vertical{width:48px;height:150px;padding:0}
 .seat .seat-text{font-weight:800;line-height:1.12;overflow-wrap:anywhere}
 .seat.horizontal .seat-text{width:100%;white-space:normal;transform:none}
-.seat.vertical .seat-text{white-space:nowrap;transform:rotate(-90deg);transform-origin:center;width:136px;line-height:1}
+.seat.vertical .seat-text{white-space:nowrap;transform:rotate(-90deg);transform-origin:center;width:var(--seat-label-length,136px);line-height:1;overflow:visible;text-overflow:clip}
 .seat.empty{opacity:.25;background:#f8fafc;border-style:dashed;box-shadow:none}
 .seat.empty .seat-text{visibility:hidden}
 .seat.manual{cursor:grab;touch-action:manipulation;transition:box-shadow .12s,border-color .12s,opacity .12s}
@@ -184,9 +184,9 @@ tr:hover td{background:#fbfdff}
 .overview-inline-seat.host{border-color:#0f766e;background:#ecfdf5}
 .overview-inline-seat.rank1{border-color:#2563eb;background:#eff6ff}
 .overview-inline-seat.horizontal{height:21px;padding:2px 5px}
-.overview-inline-seat.vertical{width:23px;padding:2px 1px}
+.overview-inline-seat.vertical{width:23px;padding:2px 1px;overflow:visible}
 .overview-inline-seat .overview-inline-seat-text{display:block;width:100%;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center}
-.overview-inline-seat.vertical .overview-inline-seat-text{transform:rotate(-90deg);transform-origin:center;width:var(--overview-seat-label-length,70px);max-width:none}
+.overview-inline-seat.vertical .overview-inline-seat-text{transform:rotate(-90deg);transform-origin:center;width:var(--overview-seat-label-length,70px);max-width:none;overflow:visible;text-overflow:clip}
 .overview-legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;font-size:.78rem;color:var(--muted)}
 .overview-overflow-note{font-size:.76rem;color:var(--muted)}
 
@@ -323,7 +323,7 @@ tr:hover td{background:#fbfdff}
       <button data-view="conteudos">Conteúdos</button>
       <button data-view="acessos">Acessos</button>
     </nav>
-    <div class="sidebar-footer">SGCES v1.5.0</div>
+    <div class="sidebar-footer">SGCES v1.5.1</div>
   </aside>
 
   <main class="main">
@@ -774,6 +774,7 @@ tr:hover td{background:#fbfdff}
         const nome=[g.POSTO_GRAD,g.NOME_GUERRA||g.NOME_COMPLETO].filter(Boolean).join(' ');
         s.title=[nome,g.NOME_COMPLETO].filter(Boolean).join(' • ');s.dataset.guest=String(g.ID_CONVIDADO||'');
         const fontSize=nome.length>32?'.64rem':nome.length>26?'.68rem':nome.length>20?'.72rem':'.76rem';
+        if(orientation==='vertical'){const approx=Math.max(136,Math.min(260,30+nome.length*6.2));s.style.height=Math.max(150,approx+14)+'px';s.style.setProperty('--seat-label-length',approx+'px');}
         s.innerHTML=`<div class="seat-text" style="font-size:${fontSize}">${esc(nome)}</div>`;
         if(opts.editor){
           s.draggable=true;
@@ -1385,9 +1386,22 @@ tr:hover td{background:#fbfdff}
         if(!p.nome)p.nome='Mesa '+(p.numero||'');
         if(!p.capacidade||Number(p.capacidade)<1)throw new Error('Capacidade inválida.');
         if(p.formato==='U'&&Number(p.uCabeceiraQtd)<1)throw new Error('Informe ao menos uma cadeira na cabeceira.');
-        await A.call('saveTable',p,60000);m.remove();await loadEvent();U.toast('Mesa salva.','success');
+        const saved=await A.call('saveTable',p,60000);if(saved&&saved.ID_MESA){const i=(state.data.tables||[]).findIndex(x=>String(x.ID_MESA)===String(saved.ID_MESA));if(i>=0)state.data.tables[i]=Object.assign({},state.data.tables[i],saved);else state.data.tables.push(saved);}m.remove();renderView(state.view);await loadEvent(false);renderView(state.view);U.toast('Mesa salva.','success');
       }catch(err){U.toast(err.message,'error');}finally{U.setBusy(btn,false);}
     };
+  }
+
+  function croquiEditorTables_(tables){
+    const seen={};
+    return (tables||[]).map((src,idx)=>{
+      const t=Object.assign({},src),x=U.num(t.X,50),y=U.num(t.Y,50),key=(Math.round(x*10)/10)+'|'+(Math.round(y*10)/10);
+      const n=seen[key]||0;seen[key]=n+1;
+      if(n>0){
+        const ring=Math.ceil(n/4),slot=(n-1)%4,dx=[6,0,-6,0][slot]*ring,dy=[0,6,0,-6][slot]*ring;
+        t.X=Math.max(4,Math.min(96,x+dx));t.Y=Math.max(4,Math.min(96,y+dy));
+      }
+      return t;
+    });
   }
 
   function renderCroqui(){
@@ -1409,7 +1423,7 @@ tr:hover td{background:#fbfdff}
         <div class="floor-wrap" id="croquiWrap"><div id="editorFloor" class="floor"></div></div>
       </div>`;
     const floor=U.$('#editorFloor',c),wrap=U.$('#croquiWrap',c);
-    U.renderFloor(floor,state.data.tables||[],{editor:true,backgroundUrl:e.CROQUI_URL});
+    U.renderFloor(floor,croquiEditorTables_(state.data.tables||[]),{editor:true,backgroundUrl:e.CROQUI_URL});
     enableFloorEditing(floor);
     const pz=U.enablePanZoom(wrap,floor);
     c.querySelector('[data-zoom-in]').onclick=()=>pz&&pz.zoomIn();
@@ -1616,8 +1630,17 @@ tr:hover td{background:#fbfdff}
     const expandedRect=(r,pad)=>({left:r.left-pad,top:r.top-pad,right:r.right+pad,bottom:r.bottom+pad});
     let lastScale=-1;
 
+    const measureCanvas=document.createElement('canvas'),measureCtx=measureCanvas.getContext('2d');
+    function measuredLabelWidth(el,scale){
+      const label=String(el.dataset.label||'');
+      const px=Math.max(8.1,Math.min(10,8.1+(scale-1)*.7));
+      if(measureCtx){measureCtx.font=`800 ${px}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;return Math.ceil(measureCtx.measureText(label).width+14);}
+      return Math.ceil(label.length*px*.62+14);
+    }
+
     function styleCardForWidth(el,labelLength,scale){
       const inv=1/Math.max(.001,scale),vertical=el.dataset.orientation==='vertical',rot=U.num(el.dataset.tableRot,0);
+      if(vertical)labelLength=Math.max(labelLength,measuredLabelWidth(el,scale));
       el.style.setProperty('--overview-seat-label-length',labelLength+'px');
       if(vertical){
         el.style.width=Math.max(20,Math.min(25,20+(scale-1)*1.6))+'px';
@@ -1670,7 +1693,8 @@ tr:hover td{background:#fbfdff}
         const cards=group.cards.slice().sort((a,b)=>U.num(a.dataset.priority,2)-U.num(b.dataset.priority,2));
         cards.forEach(el=>{
           let fitted=null,rect=null;
-          for(const width of widths){
+          const attempts=el.dataset.orientation==='vertical'?[Math.max(88,measuredLabelWidth(el,scale))]:widths;
+          for(const width of attempts){
             styleCardForWidth(el,width,scale);positionCard(el,group,scale);
             const r=expandedRect(el.getBoundingClientRect(),1.5);
             const bad=accepted.some(ar=>rectsOverlap(r,ar,0))||localAccepted.some(ar=>rectsOverlap(r,ar,0));
