@@ -178,6 +178,8 @@ tr:hover td{background:#fbfdff}
 .overview-table-shape.u:hover::before{border-color:#557faf}
 .overview-table-name{position:relative;z-index:2;background:rgba(255,255,255,.9);padding:2px 5px;border-radius:5px;font-size:clamp(8px,.72vw,11px);max-width:92%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;pointer-events:none}
 .overview-table-meta{display:block;font-size:.66em;font-weight:750;color:#5b6b7f;margin-top:1px}
+.overview-direction-tag{position:absolute;left:50%;top:calc(100% + 5px);z-index:7;display:flex;align-items:center;gap:4px;max-width:220px;padding:3px 7px;border:1px solid #bfd0e3;border-radius:999px;background:rgba(255,255,255,.96);box-shadow:0 2px 7px rgba(15,23,42,.09);font-size:9px;line-height:1.15;font-weight:850;color:#173f74;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
+.overview-direction-tag.principal{border-color:#9ed6c8;background:#ecfdf5;color:#0f766e}.orientation-info{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px;font-size:.79rem;color:#334155}.orientation-arrow{display:inline-flex;align-items:center;justify-content:center;min-width:28px;height:24px;padding:0 6px;border-radius:999px;background:#e8f0fb;color:#173f74;font-size:1rem;font-weight:900}.orientation-star{background:#ecfdf5;color:#0f766e}
 .overview-table-shape.clickable{cursor:pointer}
 .overview-inline-seat{position:absolute;z-index:4;box-sizing:border-box;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.96);border:1px solid #cbd5e1;border-radius:5px;box-shadow:0 2px 5px rgba(15,23,42,.08);font-weight:800;font-size:9px;line-height:1;color:#1f2937;overflow:hidden;pointer-events:none;opacity:0;visibility:hidden;transform-origin:center center;transition:opacity .12s ease,border-color .12s ease,background .12s ease}
 .overview-inline-seat.visible{opacity:1;visibility:visible}
@@ -323,7 +325,7 @@ tr:hover td{background:#fbfdff}
       <button data-view="conteudos">Conteúdos</button>
       <button data-view="acessos">Acessos</button>
     </nav>
-    <div class="sidebar-footer">SGCES v1.5.1</div>
+    <div class="sidebar-footer">SGCES v1.5.2</div>
   </aside>
 
   <main class="main">
@@ -1466,9 +1468,24 @@ tr:hover td{background:#fbfdff}
     });
   }
 
+  function principalCerimonialTable(){
+    const tables=plannedCerimonialTables();
+    const explicit=tables.find(x=>U.yes(x.PRINCIPAL));
+    if(explicit)return explicit;
+    const active=(state.data.guests||[]).filter(g=>U.normalize(g.RSVP)!=='nao comparecera'&&g.MESA_ID).slice().sort(U.byPrecedence);
+    const top=active.find(g=>U.normalize(g.NIVEL)==='autoridade')||active[0]||null;
+    if(!top)return null;
+    return tables.find(x=>String(x.ID_MESA)===String(top.MESA_ID))||tableById(top.MESA_ID)||null;
+  }
+
+  function majorGuestForTable(table,guests){
+    const list=(guests||state.data.guests||[]).filter(g=>String(g.MESA_ID)===String(table&&table.ID_MESA)&&U.normalize(g.RSVP)!=='nao comparecera').slice().sort(U.byPrecedence);
+    return list.find(g=>U.normalize(g.NIVEL)==='autoridade')||list[0]||null;
+  }
+
   function directionToPrincipal(table){
-    const principal=(state.data.tables||[]).find(x=>U.yes(x.PRINCIPAL));
-    if(!principal||String(principal.ID_MESA)===String(table.ID_MESA)) return '';
+    const principal=principalCerimonialTable();
+    if(!principal||!table||String(principal.ID_MESA)===String(table.ID_MESA)) return '';
     const dx=U.num(principal.X)-U.num(table.X),dy=U.num(principal.Y)-U.num(table.Y);
     const ang=Math.atan2(dy,dx)*180/Math.PI;
     if(ang>=-22.5&&ang<22.5) return '→';
@@ -1479,6 +1496,20 @@ tr:hover td{background:#fbfdff}
     if(ang>=-157.5&&ang<-112.5) return '↖';
     if(ang>=-112.5&&ang<-67.5) return '↑';
     return '↗';
+  }
+
+  function tableOrientationInfo(table,guests){
+    if(!table)return{major:null,dir:'',isPrincipal:false,text:''};
+    const principal=principalCerimonialTable(),major=majorGuestForTable(table,guests),isPrincipal=!!principal&&String(principal.ID_MESA)===String(table.ID_MESA),dir=isPrincipal?'':directionToPrincipal(table);
+    const name=major?[major.POSTO_GRAD,major.NOME_GUERRA||major.NOME_COMPLETO].filter(Boolean).join(' '):'';
+    const text=isPrincipal?(name?`Maior precedência: ${name} • maior autoridade do evento nesta mesa`:'Maior autoridade do evento nesta mesa'):(name?`Maior precedência: ${name}${dir?` • ${dir} maior autoridade do evento`:''}`:(dir?`${dir} maior autoridade do evento`:''));
+    return{major,dir,isPrincipal,text};
+  }
+
+  function orientationInfoHtml(table,guests){
+    const o=tableOrientationInfo(table,guests);if(!o.text)return'';
+    const icon=o.isPrincipal?'★':o.dir;
+    return `<div class="orientation-info"><span class="orientation-arrow ${o.isPrincipal?'orientation-star':''}">${U.esc(icon)}</span><span>${U.esc(o.text.replace(/^Maior precedência:\s*/,'Maior precedência: '))}</span></div>`;
   }
 
   function plannedCerimonialTables(){
@@ -1578,8 +1609,9 @@ tr:hover td{background:#fbfdff}
     closeCerimonialOverviewPopover(true);
     overviewPopoverPinned=!!pinned;
     const guests=(state.data.guests||[]).filter(g=>String(g.MESA_ID)===String(table.ID_MESA)&&U.normalize(g.RSVP)!=='nao comparecera').sort(U.byPrecedence);
+    const orientation=orientationInfoHtml(table,guests);
     const pop=document.createElement('div');pop.className='overview-table-popover';pop.style.visibility='hidden';
-    pop.innerHTML=`<div class="overview-popover-head"><div><h4>${U.esc(table.NOME)} • ${U.esc(table.FORMATO)}</h4><div class="small muted">${guests.length}/${U.num(table.CAPACIDADE)} pessoas — ${overviewPopoverPinned?'popup fixado':'passe para consultar; clique para fixar'}</div></div><div class="overview-popover-actions"><button class="btn btn-sm" data-open-detail>Abrir detalhe</button><button class="btn btn-sm" data-close-pop aria-label="Fechar">×</button></div></div><div class="overview-popup-stage"></div>`;
+    pop.innerHTML=`<div class="overview-popover-head"><div><h4>${U.esc(table.NOME)} • ${U.esc(table.FORMATO)}</h4><div class="small muted">${guests.length}/${U.num(table.CAPACIDADE)} pessoas — ${overviewPopoverPinned?'popup fixado':'passe para consultar; clique para fixar'}</div>${orientation}</div><div class="overview-popover-actions"><button class="btn btn-sm" data-open-detail>Abrir detalhe</button><button class="btn btn-sm" data-close-pop aria-label="Fechar">×</button></div></div><div class="overview-popup-stage"></div>`;
     document.body.appendChild(pop);overviewPopoverEl=pop;
     const stage=pop.querySelector('.overview-popup-stage');
     if(guests.length)U.renderSeating(stage,table,guests,{});else stage.innerHTML='<div class="overview-popup-empty">Nenhuma pessoa posicionada nesta mesa.</div>';
@@ -1605,8 +1637,9 @@ tr:hover td{background:#fbfdff}
       shape.className='overview-table-shape '+(format==='REDONDA'?'round':format==='U'?'u':'rect')+' clickable';
       shape.style.left=U.num(t.X,50)+'%';shape.style.top=U.num(t.Y,50)+'%';shape.style.width=w+'%';shape.style.height=h+'%';shape.style.transform=`translate(-50%,-50%) rotate(${U.num(t.ROTACAO,0)}deg)`;
       const at=activeGuests.filter(g=>String(g.MESA_ID)===String(t.ID_MESA)).sort(U.byPrecedence),unseated=at.filter(g=>!g.ASSENTO).length;
-      shape.innerHTML=`<span class="overview-table-name">${U.esc(t.NOME)}<span class="overview-table-meta">${at.length}/${U.num(t.CAPACIDADE)}${unseated?` • ${unseated} sem lugar`:''}</span></span>`;
-      shape.title=`${t.NOME} — ${at.length}/${U.num(t.CAPACIDADE)} pessoas. Passe o mouse ou clique para ver a disposição completa.`;
+      const orient=tableOrientationInfo(t,at),rot=U.num(t.ROTACAO,0),orientIcon=orient.isPrincipal?'★':orient.dir,orientMajor=orient.major?[orient.major.POSTO_GRAD,orient.major.NOME_GUERRA||orient.major.NOME_COMPLETO].filter(Boolean).join(' '):'';
+      shape.innerHTML=`<span class="overview-table-name">${U.esc(t.NOME)}<span class="overview-table-meta">${at.length}/${U.num(t.CAPACIDADE)}${unseated?` • ${unseated} sem lugar`:''}</span></span>${orientIcon||orientMajor?`<span class="overview-direction-tag ${orient.isPrincipal?'principal':''}" style="transform:translateX(-50%) rotate(${-rot}deg)" title="${U.esc(orient.text)}">${U.esc(orientIcon)} ${U.esc(orientMajor)}</span>`:''}`;
+      shape.title=`${t.NOME} — ${at.length}/${U.num(t.CAPACIDADE)} pessoas.${orient.text?' '+orient.text+'.':''} Passe o mouse ou clique para ver a disposição completa.`;
       let hoverTimer=null;
       shape.addEventListener('mouseenter',()=>{if(hoverTimer)clearTimeout(hoverTimer);hoverTimer=setTimeout(()=>{if(!overviewPopoverPinned)showCerimonialOverviewPopover(t,shape,false);},130);});
       shape.addEventListener('mouseleave',()=>{if(hoverTimer){clearTimeout(hoverTimer);hoverTimer=null;}scheduleCloseCerimonialOverviewPopover();});
@@ -1745,8 +1778,7 @@ tr:hover td{background:#fbfdff}
     if(!state.selectedCerimonialTable&&tables.length)state.selectedCerimonialTable=tables[0].ID_MESA;
     if(state.selectedCerimonialTable&&!tables.some(x=>String(x.ID_MESA)===String(state.selectedCerimonialTable)))state.selectedCerimonialTable=tables[0]?.ID_MESA||'';
     const t=tableById(state.selectedCerimonialTable),seated=t?(state.data.guests||[]).filter(g=>String(g.MESA_ID)===String(t.ID_MESA)&&U.normalize(g.RSVP)!=='nao comparecera').sort(U.byPrecedence):[];
-    const mainDir=t?directionToPrincipal(t):'',major=seated.find(g=>U.normalize(g.NIVEL)==='autoridade')||seated[0]||null;
-    const info=t&&!U.yes(t.PRINCIPAL)&&major?`<div class="small" style="margin-top:8px"><strong>Maior precedência:</strong> ${U.esc([major.POSTO_GRAD,major.NOME_GUERRA||major.NOME_COMPLETO].filter(Boolean).join(' '))}${mainDir?` • Mesa principal ${U.esc(mainDir)}`:''}</div>`:'';
+    const info=t?orientationInfoHtml(t,seated):'';
     const autoOn=U.yes((state.data.event||{}).AUTO_AUTORIDADES);
     const headerActions=`<div class="cerimonial-header-actions"><div class="cerimonial-action-cluster"><button class="btn" data-auth-config>Distribuição automática</button>${autoOn?'<button class="btn" data-redistribute>Redistribuir agora</button>':''}</div><div class="cerimonial-action-cluster"><button class="btn" data-print-layout>Imprimir</button></div></div>`;
     c.innerHTML=heading('Cerimonial','Distribuição visual das mesas e dos lugares.',headerActions)+`<div class="card overview-card"><div class="section-actions"><div><h3 style="margin:0">Visão geral do croqui</h3><div class="small muted">Consulta opcional das mesas planejadas e dos lugares já definidos.</div></div><div class="actions"><button class="btn btn-sm ${state.cerimonialOverviewOpen?'btn-soft':''}" data-toggle-overview>${state.cerimonialOverviewOpen?'Ocultar visão geral':'Mostrar visão geral'}</button></div></div>${state.cerimonialOverviewOpen?'<div id="cerimonialOverview"></div>':''}</div><div class="cerimonial-grid"><div class="card"><h3>Mesas planejadas</h3><div class="cerimonial-table-list">${tables.length?tables.map(x=>`<button class="btn ${String(x.ID_MESA)===String(state.selectedCerimonialTable)?'btn-soft':''}" style="width:100%;margin-bottom:7px;justify-content:flex-start;white-space:normal;text-align:left" data-ct="${U.esc(x.ID_MESA)}">${U.esc(x.NOME)} • ${U.esc(x.FORMATO)} <span class="badge ${U.yes(x.USA_ICA)?'info':''}" style="margin-left:auto">Padrão ${U.yes(x.USA_ICA)?'SIM':'NÃO'}</span></button>`).join(''):'<p class="muted">Nenhuma mesa planejada.</p>'}</div></div><div class="card">${t?`<div class="section-actions"><div><h3 style="margin:0">${U.esc(t.NOME)}</h3><div class="small muted">${seated.length}/${U.num(t.CAPACIDADE)} pessoas • ${U.esc(t.FORMATO)}</div>${info}</div><div class="actions"><button class="btn btn-sm" data-toggle-standard>Composição padrão: ${U.yes(t.USA_ICA)?'SIM':'NÃO'}</button><button class="btn btn-sm" data-edit-table>Editar mesa</button></div></div><div class="cerimonial-action-groups"><div class="cerimonial-action-row"><div class="cerimonial-action-buttons"><button class="btn" data-members>Selecionar pessoas</button>${U.yes(t.USA_ICA)?'<button class="btn btn-primary" data-compose>Aplicar composição padrão</button>':''}<button class="btn" data-clear>Limpar assentos</button></div></div><div class="cerimonial-action-row"><div class="cerimonial-action-buttons"><button class="btn ${state.manualSeatMode?'btn-soft':''}" data-manual>${state.manualSeatMode?'Encerrar edição de lugares':'Editar lugares manualmente'}</button>${state.manualSeatGuestId?'<button class="btn btn-danger" data-unseat>Retirar selecionado do assento</button>':''}</div></div></div>${state.manualSeatMode?'<div class="manual-seat-hint">Arraste um nome para outro assento. Em celular ou tablet, toque primeiro no nome e depois no assento desejado. Se o destino estiver ocupado, os dois trocam de lugar.</div>':''}<div class="seating-stage" id="seatingStage"></div><div id="unseatedTray"></div>`:'<p class="muted">Selecione uma mesa.</p>'}</div></div>`;
@@ -1779,12 +1811,12 @@ tr:hover td{background:#fbfdff}
     const pages=tables.map(table=>{
       const guests=(state.data.guests||[]).filter(g=>String(g.MESA_ID)===String(table.ID_MESA)&&U.normalize(g.RSVP)!=='nao comparecera').sort(U.byPrecedence);
       const holder=document.createElement('div');U.renderSeating(holder,table,guests);
-      const canvas=holder.querySelector('.seating-canvas');
-      return `<section class="print-page"><div class="print-head"><h1>${U.esc(eventName)}</h1><h2>${U.esc(table.NOME||('Mesa '+table.NUMERO))}</h2><div>${guests.length}/${U.num(table.CAPACIDADE)} pessoas</div></div><div class="print-stage"><div class="print-inner">${canvas.outerHTML}</div></div></section>`;
+      const canvas=holder.querySelector('.seating-canvas'),orient=tableOrientationInfo(table,guests),orientLine=orient.text?`<div class="print-orientation">${U.esc(orient.isPrincipal?'★':'')} ${U.esc(orient.isPrincipal?'':orient.dir)} ${U.esc(orient.text)}</div>`:'';
+      return `<section class="print-page"><div class="print-head"><h1>${U.esc(eventName)}</h1><h2>${U.esc(table.NOME||('Mesa '+table.NUMERO))}</h2><div>${guests.length}/${U.num(table.CAPACIDADE)} pessoas</div>${orientLine}</div><div class="print-stage"><div class="print-inner">${canvas.outerHTML}</div></div></section>`;
     }).join('');
     const w=window.open('','_blank');
     if(!w){U.toast('O navegador bloqueou a janela de impressão.','error');return;}
-    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${U.esc(eventName)} — Composição das mesas</title><style>${css}\n@page{size:A4 landscape;margin:10mm}body{background:#fff;color:#111827;margin:0;font-family:Arial,sans-serif}.print-page{break-after:page;page-break-after:always;height:185mm;overflow:hidden}.print-page:last-child{break-after:auto;page-break-after:auto}.print-head{text-align:center;margin:0 0 4mm}.print-head h1{font-size:15pt;margin:0 0 2mm}.print-head h2{font-size:13pt;margin:0 0 1mm}.print-head div{font-size:9pt;color:#64748b}.print-stage{height:160mm;width:100%;overflow:hidden;display:flex;align-items:flex-start;justify-content:center}.print-inner{position:relative}.seating-canvas{margin:0}.seat{box-shadow:none}.table-shape{print-color-adjust:exact;-webkit-print-color-adjust:exact}</style></head><body>${pages}<script>window.addEventListener('load',()=>{document.querySelectorAll('.print-stage').forEach(stage=>{const inner=stage.querySelector('.print-inner'),canvas=inner.querySelector('.seating-canvas');if(!canvas)return;const sw=stage.clientWidth,sh=stage.clientHeight,cw=parseFloat(canvas.style.width)||canvas.offsetWidth,ch=parseFloat(canvas.style.height)||canvas.offsetHeight,scale=Math.min(sw/cw,sh/ch,1);inner.style.width=(cw*scale)+'px';inner.style.height=(ch*scale)+'px';canvas.style.transform='scale('+scale+')';canvas.style.transformOrigin='top left';});setTimeout(()=>window.print(),250);});<\/script></body></html>`);
+    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${U.esc(eventName)} — Composição das mesas</title><style>${css}\n@page{size:A4 landscape;margin:10mm}body{background:#fff;color:#111827;margin:0;font-family:Arial,sans-serif}.print-page{break-after:page;page-break-after:always;height:185mm;overflow:hidden}.print-page:last-child{break-after:auto;page-break-after:auto}.print-head{text-align:center;margin:0 0 4mm}.print-head h1{font-size:15pt;margin:0 0 2mm}.print-head h2{font-size:13pt;margin:0 0 1mm}.print-head div{font-size:9pt;color:#64748b}.print-head .print-orientation{margin-top:2mm;font-size:10pt;font-weight:700;color:#173f74}.print-stage{height:156mm;width:100%;overflow:hidden;display:flex;align-items:flex-start;justify-content:center}.print-inner{position:relative}.seating-canvas{margin:0}.seat{box-shadow:none}.table-shape{print-color-adjust:exact;-webkit-print-color-adjust:exact}</style></head><body>${pages}<script>window.addEventListener('load',()=>{document.querySelectorAll('.print-stage').forEach(stage=>{const inner=stage.querySelector('.print-inner'),canvas=inner.querySelector('.seating-canvas');if(!canvas)return;const sw=stage.clientWidth,sh=stage.clientHeight,cw=parseFloat(canvas.style.width)||canvas.offsetWidth,ch=parseFloat(canvas.style.height)||canvas.offsetHeight,scale=Math.min(sw/cw,sh/ch,1);inner.style.width=(cw*scale)+'px';inner.style.height=(ch*scale)+'px';canvas.style.transform='scale('+scale+')';canvas.style.transformOrigin='top left';});setTimeout(()=>window.print(),250);});<\/script></body></html>`);
     w.document.close();
   }
 

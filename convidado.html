@@ -495,7 +495,7 @@ tr:hover td{background:#fbfdff}
 </script>
 <script>
 (function(){
-  const U=SGCES_UI,A=SGCES_API;let publicData=null,groupData=null,selectedGuestId='',selectedReserveTable='';const q=new URLSearchParams(location.search);const eventId=(q.get('evento')||'').trim();const mode=(q.get('modo')||'').trim().toLowerCase();
+  const U=SGCES_UI,A=SGCES_API;let publicData=null,groupData=null,selectedGuestId='',selectedReserveTable='',reserveSubmitting=false,reserveRequestKey='';const q=new URLSearchParams(location.search);const eventId=(q.get('evento')||'').trim();const mode=(q.get('modo')||'').trim().toLowerCase();
   document.addEventListener('DOMContentLoaded',async()=>{
     U.$('#guestName').addEventListener('input',debounce(searchName,280));
     await loadPublic();
@@ -522,7 +522,7 @@ tr:hover td{background:#fbfdff}
       v.innerHTML='<div class="card"><h2>Reserva indisponível</h2></div>';return;
     }
     const tables=publicData.tables||[];
-    selectedReserveTable='';
+    selectedReserveTable='';reserveSubmitting=false;reserveRequestKey='';
     v.innerHTML=`<div class="card">
       <div class="page-heading"><div><h2 style="font-size:1.75rem">Reserva de mesas</h2></div></div>
       <h3>Escolha a mesa</h3>
@@ -565,17 +565,27 @@ tr:hover td{background:#fbfdff}
   }
   async function submitReserve(){
     const v=U.$('#reserveView'),e=publicData.event,eventMode=key(e.MODO_PADRAO);
+    if(reserveSubmitting){U.toast('A reserva já está sendo processada. Aguarde a confirmação.','info');return;}
     const names=U.$('#rGuests',v).value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
-    const payload={eventId:e.ID_EVENTO,tableId:selectedReserveTable,titular:{
+    if(!reserveRequestKey){
+      try{reserveRequestKey=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():('res_'+Date.now()+'_'+Math.random().toString(36).slice(2));}
+      catch(err){reserveRequestKey='res_'+Date.now()+'_'+Math.random().toString(36).slice(2);}
+    }
+    const payload={eventId:e.ID_EVENTO,tableId:selectedReserveTable,reservationKey:reserveRequestKey,titular:{
       postoGrad:U.$('#rPosto',v).value.trim(),nomeCompleto:U.$('#rNome',v).value.trim(),nomeGuerra:U.$('#rGuerra',v).value.trim(),
       omOrgao:U.$('#rOm',v).value.trim(),email:U.$('#rEmail',v).value.trim(),telefone:U.$('#rTel',v).value.trim()
     },convidados:names.map(nomeCompleto=>({nomeCompleto})),primeiroEhAcompanhante:names.length>0};
     if(!payload.titular.nomeCompleto){U.toast('Informe o nome completo do titular.','error');return;}
     if(['RESERVA','HIBRIDO'].includes(eventMode)&&!payload.tableId){U.toast('Selecione uma mesa disponível no croqui.','error');return;}
-    const b=U.$('[data-reserve]',v);U.setBusy(b,true,'Reservando');
+    const b=U.$('[data-reserve]',v);reserveSubmitting=true;U.setBusy(b,true,'Reservando');
     A.call('publicRegister',payload,65000).then(r=>{
       v.innerHTML=`<div class="card" style="text-align:center"><div class="badge success">RESERVA CONCLUÍDA</div><h2 style="margin-top:12px">${U.esc(r.titular.NOME_COMPLETO)}</h2><p>${r.table?`Mesa reservada: <strong>${U.esc(r.table.NOME)}</strong>.`:'A mesa poderá ser definida no evento.'}</p></div>`;
-    }).catch(err=>U.toast(err.message,'error')).finally(()=>U.setBusy(b,false));
+    }).catch(err=>{
+      reserveSubmitting=false;
+      U.toast(err.message,'error');
+      // Mantém a mesma reservationKey. Se a API tiver concluído após um timeout,
+      // uma nova tentativa recebe a reserva já criada em vez de duplicá-la.
+    }).finally(()=>{if(document.body.contains(b))U.setBusy(b,false);});
   }
 })();
 
