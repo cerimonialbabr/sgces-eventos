@@ -222,6 +222,8 @@ tr:hover td{background:#fbfdff}
 @media(max-width:520px){.public-header h1{font-size:1.4rem}.public-header p{max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.reception-main{padding:10px}.reception-search-card{padding:14px}.card{border-radius:13px}.detail-table{font-size:1.65rem}.floor-wrap{margin-left:-4px;margin-right:-4px}}
 
 .public-header.has-banner{min-height:170px;background-size:cover;background-position:center;background-repeat:no-repeat;align-items:flex-start;justify-content:flex-end}.public-header.has-banner>div:first-child{display:none}.public-header.has-banner .actions{margin-left:auto}.nominata-item{cursor:pointer;width:100%;text-align:left;color:inherit;font:inherit}.nominata-item:hover{background:#f8fbff;border-color:#9bb2cf}.nominata-photo{width:54px;height:54px;border-radius:10px;background:#e9eef5;display:flex;align-items:center;justify-content:center;overflow:hidden;color:#7c899b;font-size:.68rem;font-weight:800;text-align:center;flex:0 0 auto}.nominata-photo img{width:100%;height:100%;object-fit:cover}.nominata-main{display:flex;align-items:center;gap:11px;min-width:0}.nominata-main strong{display:block;line-height:1.18}.nom-popup-head{display:grid;grid-template-columns:180px 1fr;gap:18px;align-items:start}.nom-popup-photo{width:180px;height:220px;border-radius:14px;background:#e9eef5;display:flex;align-items:center;justify-content:center;overflow:hidden;color:#7c899b;font-weight:800}.nom-popup-photo img{width:100%;height:100%;object-fit:cover}.nom-popup-group{display:grid;gap:8px;margin-top:14px}.nom-popup-group label{display:flex;gap:10px;align-items:center;padding:10px;border:1px solid var(--line);border-radius:10px}.nom-popup-group input{width:20px;height:20px}@media(max-width:620px){.public-header.has-banner{min-height:120px;position:relative}.nom-popup-head{grid-template-columns:1fr}.nom-popup-photo{width:140px;height:170px}.nominata-item{grid-template-columns:1fr auto}.nominata-main{grid-column:1/-1}}
+
+.reception-filters{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin-top:10px}.guest-list{display:grid;gap:7px;max-height:58vh;overflow:auto;padding-right:2px}.guest-list .search-result{width:100%;text-align:left}.guest-row-main{display:flex;align-items:center;gap:10px;min-width:0}.guest-row-text{min-width:0;flex:1}.guest-row-status{flex:0 0 auto}.detail-seat{position:absolute;z-index:8;transform:translate(-50%,-50%);min-width:58px;max-width:126px;padding:3px 6px;border-radius:7px;background:#fff;border:1px solid #b8c6d8;box-shadow:0 2px 6px rgba(15,23,42,.12);font-size:clamp(7px,.7vw,10px);font-weight:800;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:auto}.detail-seat.present{background:#dcfce7;border-color:#22c55e;color:#166534}.detail-seat.selected{outline:3px solid #2563eb;outline-offset:1px}.detail-seat.vertical{width:26px;min-width:26px;max-width:26px;height:82px;writing-mode:vertical-rl;transform:translate(-50%,-50%) rotate(180deg);white-space:nowrap;text-overflow:clip;overflow:hidden;padding:5px 3px}.table-person-row{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;border:1px solid var(--line);background:#fff;border-radius:9px;padding:10px;margin-top:7px;text-align:left}.table-person-row:hover{background:#f8fbff}.floor-wrap .floor{position:relative}@media(max-width:700px){.reception-filters{grid-template-columns:1fr}.guest-list{max-height:none}.detail-seat{max-width:90px}}
 </style>
 </head>
 <body class="public-shell">
@@ -231,9 +233,17 @@ tr:hover td{background:#fbfdff}
 </header>
 <main class="reception-main">
   <section id="searchView" class="card reception-search-card">
-    <div class="page-heading" style="margin-bottom:14px"><div><h2 style="font-size:1.7rem">Buscar convidado</h2><p>Digite o nome ou nome de guerra.</p></div></div>
-    <input class="search-input reception-search" id="search" placeholder="Digite o nome..." autocomplete="off">
-    <div id="results" class="grid" style="margin-top:14px"></div>
+    <div class="page-heading" style="margin-bottom:14px"><div><h2 style="font-size:1.7rem">Convidados</h2><p>Lista carregada para busca rápida.</p></div></div>
+    <input class="search-input reception-search" id="search" placeholder="Buscar por nome, nome de guerra ou posto..." autocomplete="off">
+    <div class="reception-filters">
+      <select id="postoFilter" class="search-input"><option value="">Todos os postos</option></select>
+      <select id="sortFilter" class="search-input">
+        <option value="PRECEDENCIA">Ordem de precedência</option>
+        <option value="GUERRA">Nome de guerra — A a Z</option>
+        <option value="NOME">Primeiro nome — A a Z</option>
+      </select>
+    </div>
+    <div id="results" class="guest-list" style="margin-top:14px"></div>
   </section>
 
   <section id="detailView" class="hidden"></section>
@@ -548,35 +558,41 @@ tr:hover td{background:#fbfdff}
 <script>
 (function(){
   const U=SGCES_UI,A=SGCES_API;
-  let data={event:null,tables:[],nominata:[]},currentView='search',selectedId='',groupData=null,timer=null,loading=false,searchTimer=null,searchSeq=0;
+  let data={event:null,tables:[],nominata:[],guests:[],viewConfig:{}},currentView='search',selectedId='',groupData=null,timer=null,loading=false;
   const eventId=(new URLSearchParams(location.search).get('evento')||'').trim();
 
   document.addEventListener('DOMContentLoaded',()=>{
-    U.$('#refresh').onclick=load;
-    U.$('#search').oninput=()=>{clearTimeout(searchTimer);searchTimer=setTimeout(searchName,260);};
+    U.$('#refresh').onclick=()=>load(true);
+    U.$('#search').oninput=renderGuestList;
+    U.$('#postoFilter').onchange=renderGuestList;
+    U.$('#sortFilter').onchange=renderGuestList;
     U.$('#menuBtn').onclick=()=>U.$('#menuOverlay').classList.remove('hidden');
     U.$('#closeMenu').onclick=closeMenu;
     U.$('#menuOverlay').addEventListener('click',e=>{if(e.target===U.$('#menuOverlay'))closeMenu();});
     U.$$('#menuOverlay [data-view]').forEach(b=>b.onclick=()=>{showView(b.dataset.view);closeMenu();});
-    load();
-    timer=setInterval(()=>{if(!document.hidden)load();},Math.max(15000,Number(SGCES_CONFIG.POLL_RECEPTION_MS||15000)));
-    document.addEventListener('visibilitychange',()=>{if(!document.hidden)load();});
+    load(true);
+    timer=setInterval(()=>{if(!document.hidden)load(false);},Math.max(20000,Number(SGCES_CONFIG.POLL_RECEPTION_MS||20000)));
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden)load(false);});
     setTimeout(()=>U.$('#search').focus(),80);
   });
 
   function closeMenu(){U.$('#menuOverlay').classList.add('hidden');}
   function showOnly(id){['searchView','detailView','nominataView','croquiView'].forEach(x=>U.$('#'+x).classList.toggle('hidden',x!==id));}
   function showView(v){currentView=v;selectedId='';groupData=null;renderCurrent();if(v==='search')setTimeout(()=>U.$('#search').focus(),50);}
-  function renderCurrent(){if(currentView==='search')showOnly('searchView');else if(currentView==='detail')renderDetail();else if(currentView==='nominata')renderNominata();else if(currentView==='croqui')renderCroqui();}
+  function renderCurrent(){if(currentView==='search'){showOnly('searchView');renderGuestList();}else if(currentView==='detail')renderDetail();else if(currentView==='nominata')renderNominata();else if(currentView==='croqui')renderCroqui();}
   function table(id){return (data.tables||[]).find(t=>String(t.ID_MESA)===String(id));}
+  function guest(id){return (data.guests||[]).find(g=>String(g.ID_CONVIDADO)===String(id));}
+  function rootIdOf(g){return g&&g.ID_TITULAR?String(g.ID_TITULAR):String(g&&g.ID_CONVIDADO||'');}
+  function groupFor(g){if(!g)return[];const root=rootIdOf(g);return (data.guests||[]).filter(x=>String(x.ID_CONVIDADO)===root||String(x.ID_TITULAR)===root).slice().sort(U.byPrecedence);}
+  function normalizeText(s){return U.normalize(s).replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();}
 
-  async function load(){
+  async function load(forceRender){
     if(loading)return;loading=true;
     try{
       const fresh=await A.call('receptionData',{eventId},45000);
-      data=fresh||{event:null,tables:[],nominata:[]};
-      applyEventBrand(data.event||null);
-      if(currentView!=='detail')renderCurrent();
+      data=fresh||{event:null,tables:[],nominata:[],guests:[],viewConfig:{}};
+      applyEventBrand(data.event||null);fillPostos();
+      if(forceRender!==false||currentView!=='detail')renderCurrent();
     }catch(e){U.toast(e.message,'error');}
     finally{loading=false;}
   }
@@ -587,77 +603,89 @@ tr:hover td{background:#fbfdff}
     else{header.classList.remove('has-banner');header.style.backgroundImage='';U.$('#eventName').textContent=e.NOME||(eventId?'Evento não encontrado':'Nenhum evento ativo');}
   }
 
-  async function searchName(){
-    const raw=U.$('#search').value.trim(),box=U.$('#results'),seq=++searchSeq;
-    showOnly('searchView');currentView='search';
-    if(raw.length<2){box.innerHTML='<p class="muted">Digite pelo menos 2 letras para iniciar a busca.</p>';return;}
-    box.innerHTML='<p class="muted">Buscando...</p>';
-    try{
-      const r=await A.call('guestSearch',{eventId,query:raw},30000);if(seq!==searchSeq)return;
-      const list=(r&&r.results)||[];
-      box.innerHTML=list.length?list.map(g=>`<button class="search-result" data-person="${U.esc(g.ID_CONVIDADO)}"><span><strong>${U.esc([g.POSTO_GRAD,g.NOME_GUERRA||g.NOME_COMPLETO].filter(Boolean).join(' '))}</strong><span class="small muted">${U.esc(g.NOME_COMPLETO||'')}${g.TITULAR_NOME?' • Grupo de '+U.esc(g.TITULAR_NOME):''}</span></span><span>›</span></button>`).join(''):'<p class="muted">Nenhum convidado encontrado.</p>';
-      U.$$('#results [data-person]').forEach(b=>b.onclick=()=>openDetail(b.dataset.person));
-    }catch(e){if(seq===searchSeq){box.innerHTML='';U.toast(e.message,'error');}}
+  function fillPostos(){
+    const sel=U.$('#postoFilter'),cur=sel.value;const postos=[...new Set((data.guests||[]).map(g=>String(g.POSTO_GRAD||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+    sel.innerHTML='<option value="">Todos os postos</option>'+postos.map(x=>`<option value="${U.esc(x)}">${U.esc(x)}</option>`).join('');if(postos.includes(cur))sel.value=cur;
   }
 
-  async function openDetail(id){
-    selectedId=id;currentView='detail';showOnly('detailView');U.$('#detailView').innerHTML='<div class="card"><p class="muted">Carregando...</p></div>';
-    try{groupData=await A.call('guestGroup',{eventId,guestId:id,lite:true},40000);renderDetail();}
-    catch(e){U.toast(e.message,'error');showView('search');}
+  function sortedFilteredGuests(){
+    const q=normalizeText(U.$('#search').value),posto=String(U.$('#postoFilter').value||''),sort=U.$('#sortFilter').value;
+    let list=(data.guests||[]).filter(g=>!posto||String(g.POSTO_GRAD||'')===posto).filter(g=>!q||normalizeText([g.NOME_COMPLETO,g.NOME_GUERRA,g.POSTO_GRAD].join(' ')).includes(q));
+    list=list.slice();
+    if(sort==='GUERRA')list.sort((a,b)=>String(a.NOME_GUERRA||a.NOME_COMPLETO||'').localeCompare(String(b.NOME_GUERRA||b.NOME_COMPLETO||''),'pt-BR'));
+    else if(sort==='NOME')list.sort((a,b)=>String(a.NOME_COMPLETO||'').localeCompare(String(b.NOME_COMPLETO||''),'pt-BR'));
+    else list.sort(U.byPrecedence);
+    return list;
+  }
+
+  function renderGuestList(){
+    if(currentView!=='search')return;const box=U.$('#results'),list=sortedFilteredGuests();
+    box.innerHTML=list.length?list.map(g=>`<button class="search-result" data-person="${U.esc(g.ID_CONVIDADO)}"><span class="guest-row-main"><span class="guest-row-text"><strong>${U.esc([g.POSTO_GRAD,g.NOME_GUERRA||g.NOME_COMPLETO].filter(Boolean).join(' '))}</strong><span class="small muted">${U.esc(g.NOME_COMPLETO||'')}${g.ID_TITULAR?' • Grupo de '+U.esc((guest(g.ID_TITULAR)||{}).NOME_COMPLETO||'titular'):''}</span></span><span class="guest-row-status">${String(g.CHECKIN).toUpperCase()==='PRESENTE'?'<span class="badge success">CHEGOU</span>':''}</span></span></button>`).join(''):'<p class="muted">Nenhum convidado encontrado.</p>';
+    U.$$('#results [data-person]').forEach(b=>b.onclick=()=>openDetail(b.dataset.person));
+  }
+
+  function localGroupData(id){
+    const matched=guest(id);if(!matched)return null;const rootId=rootIdOf(matched),root=guest(rootId)||matched,group=groupFor(matched),t=table(root.MESA_ID||matched.MESA_ID),tableSeating=t?(data.guests||[]).filter(x=>String(x.MESA_ID)===String(t.ID_MESA)):[];
+    return{event:data.event,matched,titular:root,group,table:t,tables:data.tables||[],tableSeating,viewConfig:data.viewConfig||{}};
+  }
+  function openDetail(id){selectedId=id;groupData=localGroupData(id);currentView='detail';renderDetail();}
+
+  function applyCheckinUpdates(updates){
+    (updates||[]).forEach(u=>{
+      const gi=(data.guests||[]).findIndex(x=>String(x.ID_CONVIDADO)===String(u.ID_CONVIDADO));if(gi>=0)data.guests[gi]={...data.guests[gi],...u};
+      const ni=(data.nominata||[]).findIndex(x=>String(x.ID_CONVIDADO)===String(u.ID_CONVIDADO));if(ni>=0)data.nominata[ni]={...data.nominata[ni],...u};
+    });
   }
 
   function renderDetail(){
     showOnly('detailView');if(!groupData){showView('search');return;}
-    const g=groupData.matched||groupData.titular,group=(groupData.group||[]).slice().sort(U.byPrecedence),root=groupData.titular||group[0]||g,t=groupData.table||table((g&&g.MESA_ID)||(root&&root.MESA_ID));
-    U.$('#detailView').innerHTML=`<button class="btn btn-sm view-back" data-back>← Voltar à busca</button>
-      <div class="card reception-detail">
-        <div class="detail-head"><div class="avatar">${g&&g.FOTO_URL?`<img src="${U.esc(U.driveImage(g.FOTO_URL))}" alt="">`:'SEM FOTO'}</div><div><h2 style="margin:0 0 5px;font-size:1.45rem">${U.esc([g&&g.POSTO_GRAD,g&&g.NOME_COMPLETO].filter(Boolean).join(' '))}</h2>${g&&g.ID_TITULAR?'<div class="muted">Integrante de grupo</div>':''}</div></div>
-        <div><div class="small muted" style="font-weight:800">MESA</div><div class="detail-table">${U.esc(t?t.NOME:'Sem mesa definida')}</div>${g&&g.ASSENTO?`<div class="muted">Posição: ${U.esc(g.ASSENTO)}</div>`:''}</div>
-        <div><h3>Confirmar chegada do grupo</h3><div class="group-mini">${group.map(x=>{const arrived=String(x.CHECKIN).toUpperCase()==='PRESENTE';return `<label style="display:flex;align-items:center;gap:9px;padding:8px 0"><input type="checkbox" data-group-check="${U.esc(x.ID_CONVIDADO)}" ${arrived?'checked disabled':''}><span><strong>${U.esc([x.POSTO_GRAD,x.NOME_COMPLETO].filter(Boolean).join(' '))}</strong>${arrived?' <span class="badge success">CHEGOU</span>':''}</span></label>`;}).join('')}</div><div class="actions" style="margin-top:10px"><button class="btn btn-success" data-confirm-group>Confirmar selecionados</button></div></div>
-        ${g&&g.OBS_RECEPCAO?`<div><strong>Observação:</strong> ${U.esc(g.OBS_RECEPCAO)}</div>`:''}
-        ${t?`<div><h3 style="margin-bottom:8px">Localização</h3><div class="floor-wrap"><div class="floor" id="detailFloor"></div></div></div>`:''}
-      </div>`;
+    const g=groupData.matched||groupData.titular,group=groupFor(g),root=guest(rootIdOf(g))||group[0]||g,t=table((g&&g.MESA_ID)||(root&&root.MESA_ID));groupData={...groupData,group,table:t,tableSeating:t?(data.guests||[]).filter(x=>String(x.MESA_ID)===String(t.ID_MESA)):[]};
+    U.$('#detailView').innerHTML=`<button class="btn btn-sm view-back" data-back>← Voltar à lista</button><div class="card reception-detail"><div class="detail-head"><div class="avatar">${g&&g.FOTO_URL?`<img src="${U.esc(U.driveImage(g.FOTO_URL))}" alt="">`:'SEM FOTO'}</div><div><h2 style="margin:0 0 5px;font-size:1.45rem">${U.esc([g&&g.POSTO_GRAD,g&&g.NOME_COMPLETO].filter(Boolean).join(' '))}</h2>${g&&g.ID_TITULAR?'<div class="muted">Integrante de grupo</div>':''}</div></div><div><div class="small muted" style="font-weight:800">MESA</div><div class="detail-table">${U.esc(t?t.NOME:'Sem mesa definida')}</div>${g&&g.ASSENTO?`<div class="muted">Posição: ${U.esc(g.ASSENTO)}</div>`:''}</div><div><h3>Confirmar chegada do grupo</h3><div class="group-mini">${group.map(x=>{const arrived=String(x.CHECKIN).toUpperCase()==='PRESENTE';return `<label style="display:flex;align-items:center;gap:9px;padding:8px 0"><input type="checkbox" data-group-check="${U.esc(x.ID_CONVIDADO)}" ${arrived?'checked disabled':''}><span><strong>${U.esc([x.POSTO_GRAD,x.NOME_COMPLETO].filter(Boolean).join(' '))}</strong>${arrived?' <span class="badge success">CHEGOU</span>':''}</span></label>`;}).join('')}</div><div class="actions" style="margin-top:10px"><button class="btn btn-success" data-confirm-group>Confirmar selecionados</button></div></div>${g&&g.OBS_RECEPCAO?`<div><strong>Observação:</strong> ${U.esc(g.OBS_RECEPCAO)}</div>`:''}${t?`<div><h3 style="margin-bottom:8px">Localização</h3><div class="floor-wrap"><div class="floor" id="detailFloor"></div></div></div>`:''}</div>`;
     U.$('[data-back]',U.$('#detailView')).onclick=()=>showView('search');
-    const confirm=U.$('[data-confirm-group]',U.$('#detailView'));
-    if(confirm)confirm.onclick=async ev=>{
-      const ids=Array.from(U.$$('#detailView [data-group-check]:checked:not(:disabled)')).map(x=>x.dataset.groupCheck);if(!ids.length){U.toast('Marque quem chegou.','error');return;}
-      const b=ev.currentTarget;U.setBusy(b,true);
-      try{
-        const r=await A.call('groupCheckIn',{eventId,guestId:g.ID_CONVIDADO,guestIds:ids,compact:true},40000),updates=(r&&r.guests)||[];
-        updates.forEach(u=>{const i=(groupData.group||[]).findIndex(x=>String(x.ID_CONVIDADO)===String(u.ID_CONVIDADO));if(i>=0)groupData.group[i]={...groupData.group[i],...u};if(groupData.matched&&String(groupData.matched.ID_CONVIDADO)===String(u.ID_CONVIDADO))groupData.matched={...groupData.matched,...u};const ni=(data.nominata||[]).findIndex(x=>String(x.ID_CONVIDADO)===String(u.ID_CONVIDADO));if(ni>=0)data.nominata[ni]={...data.nominata[ni],...u};});
-        renderDetail();U.toast('Chegada registrada.','success');
-      }catch(e){U.toast(e.message,'error');}finally{U.setBusy(b,false);}
-    };
-    if(t)U.renderFloor(U.$('#detailFloor'),groupData.tables||data.tables||[],{highlightTableId:t.ID_MESA,backgroundUrl:(groupData.event||data.event||{}).CROQUI_URL});
+    const confirm=U.$('[data-confirm-group]',U.$('#detailView'));if(confirm)confirm.onclick=async ev=>{const ids=Array.from(U.$$('#detailView [data-group-check]:checked:not(:disabled)')).map(x=>x.dataset.groupCheck);if(!ids.length){U.toast('Marque quem chegou.','error');return;}const b=ev.currentTarget;U.setBusy(b,true);try{const r=await A.call('groupCheckIn',{eventId,guestId:g.ID_CONVIDADO,guestIds:ids,compact:true},40000);applyCheckinUpdates((r&&r.guests)||[]);groupData=localGroupData(g.ID_CONVIDADO);renderDetail();U.toast('Chegada registrada.','success');}catch(e){U.toast(e.message,'error');}finally{U.setBusy(b,false);}};
+    if(t)renderAccessFloor(U.$('#detailFloor'),groupData.tables||data.tables||[],groupData.tableSeating||[],String((data.viewConfig||{}).RECEPCAO||'DETALHADA'),g.ID_CONVIDADO,t.ID_MESA,id=>openDetail(id));
   }
 
-  async function openNominataGroup(id){
-    try{
-      const gd=await A.call('guestGroup',{eventId,guestId:id,lite:true},40000),g=gd.matched||gd.titular,group=(gd.group||[]).slice().sort(U.byPrecedence),t=gd.table||table((gd.titular||{}).MESA_ID);
-      const photo=g&&g.FOTO_URL?`<img src="${U.esc(U.driveImage(g.FOTO_URL))}" alt="Foto">`:'SEM FOTO';
-      const m=U.modal('Recepção da Nominata',`<div class="nom-popup-head"><div class="nom-popup-photo">${photo}</div><div><h3 style="margin:0 0 6px">${U.esc([g&&g.POSTO_GRAD,g&&g.NOME_COMPLETO].filter(Boolean).join(' '))}</h3>${t?`<div class="muted">Mesa: <strong>${U.esc(t.NOME)}</strong></div>`:''}<div class="small muted" style="margin-top:8px">Selecione quem chegou junto com esta autoridade.</div></div></div><div class="nom-popup-group">${group.map(x=>{const arrived=String(x.CHECKIN).toUpperCase()==='PRESENTE';return `<label><input type="checkbox" data-nom-group="${U.esc(x.ID_CONVIDADO)}" ${arrived?'checked disabled':''}><span><strong>${U.esc([x.POSTO_GRAD,x.NOME_COMPLETO].filter(Boolean).join(' '))}</strong>${arrived?' <span class="badge success">CHEGOU</span>':''}</span></label>`;}).join('')}</div>`,`<button class="btn" data-close>Fechar</button><button class="btn btn-success" data-confirm-nom>Confirmar selecionados</button>`);
-      const btn=U.$('[data-confirm-nom]',m);btn.onclick=async()=>{const ids=Array.from(U.$$('input[data-nom-group]:checked:not(:disabled)',m)).map(x=>x.dataset.nomGroup);if(!ids.length){U.toast('Marque quem chegou.','error');return;}U.setBusy(btn,true);try{const r=await A.call('groupCheckIn',{eventId,guestId:id,guestIds:ids,compact:true},40000),updates=(r&&r.guests)||[];updates.forEach(u=>{const ni=(data.nominata||[]).findIndex(x=>String(x.ID_CONVIDADO)===String(u.ID_CONVIDADO));if(ni>=0)data.nominata[ni]={...data.nominata[ni],...u};});m.remove();renderNominata();U.toast('Chegada registrada.','success');}catch(e){U.toast(e.message,'error');}finally{U.setBusy(btn,false);}};
-    }catch(e){U.toast(e.message,'error');}
+  function seatPoint(table,code,total,container){
+    const W=Math.max(1,container.clientWidth),H=Math.max(1,container.clientHeight),shape=String(table.FORMATO||'REDONDA').toUpperCase(),cx=U.num(table.X,50)/100*W,cy=U.num(table.Y,50)/100*H,w=U.num(table.W,shape==='RETANGULAR'?18:10)/100*W,ratio=W/H,h=(shape==='REDONDA'?U.num(table.W,10)*ratio:U.num(table.H,shape==='RETANGULAR'?8:10))/100*H,gap=8;let x=cx,y=cy,vertical=false;
+    if(shape==='REDONDA'){const i=U.num(String(code).replace('R',''),0),a=(-90)+(360*i/Math.max(1,total)),rad=a*Math.PI/180,d=Math.max(w,h)/2+22;x=cx+Math.cos(rad)*d;y=cy+Math.sin(rad)*d;}
+    else if(shape==='U'){const pos=Math.max(1,U.num(String(code).replace('U',''),1)),base=Math.min(total,Math.max(1,U.num(table.U_CABECEIRA_QTD,5)));if(pos<=base){const side=Math.ceil((pos-1)/2),dir=pos===1?0:(pos%2===0?1:-1),step=Math.max(26,(w*.42)/Math.max(1,Math.ceil((base-1)/2)));x=cx+dir*side*step;y=cy+h/2+26;vertical=true;}else{const k=pos-base,level=Math.floor((k-1)/2),right=(k-1)%2===0;x=cx+(right?1:-1)*(w/2+58);y=cy+h/2-34-level*46;vertical=false;}}
+    else{const heads=U.yes(table.CABECEIRAS),side=total-(heads?2:0),top=Math.ceil(side/2),bottom=Math.floor(side/2),s=String(code||'');if(s==='L'){x=cx-w/2-52;y=cy;vertical=false;}else if(s==='R'){x=cx+w/2+52;y=cy;vertical=false;}else if(s.startsWith('T')){const i=U.num(s.slice(1)),left=cx-w/2+20,right=cx+w/2-20;x=top<=1?cx:left+i*((right-left)/(top-1));y=cy-h/2-45;vertical=true;}else if(s.startsWith('B')){const i=U.num(s.slice(1)),left=cx-w/2+20,right=cx+w/2-20;x=bottom<=1?cx:left+i*((right-left)/(bottom-1));y=cy+h/2+45;vertical=true;}}
+    const deg=U.num(table.ROTACAO,0);if(deg){const r=deg*Math.PI/180,dx=x-cx,dy=y-cy;x=cx+dx*Math.cos(r)-dy*Math.sin(r);y=cy+dx*Math.sin(r)+dy*Math.cos(r);vertical=vertical!==((Math.abs(deg)%180)>45&&(Math.abs(deg)%180)<135);}
+    return{x,y,vertical};
+  }
+  function renderDetailedOverlay(container,tables,seating,selectedId,onPersonClick){
+    (container.querySelectorAll('.detail-seat')||[]).forEach(x=>x.remove());
+    const byTable={};(seating||[]).filter(g=>g.MESA_ID&&g.ASSENTO).forEach(g=>{(byTable[String(g.MESA_ID)]||(byTable[String(g.MESA_ID)]=[])).push(g);});
+    (tables||[]).forEach(t=>{const list=byTable[String(t.ID_MESA)]||[],total=Math.max(U.num(t.CAPACIDADE,0),list.length||0,1);list.forEach(g=>{const p=seatPoint(t,g.ASSENTO,total,container),el=document.createElement('button');el.className='detail-seat '+(p.vertical?'vertical ':'')+(String(g.CHECKIN).toUpperCase()==='PRESENTE'?'present ':'')+(String(g.ID_CONVIDADO)===String(selectedId||'')?'selected':'');el.style.left=(p.x/container.clientWidth*100)+'%';el.style.top=(p.y/container.clientHeight*100)+'%';el.textContent=[g.POSTO_GRAD,g.NOME_GUERRA||g.NOME_COMPLETO].filter(Boolean).join(' ');el.title=g.NOME_COMPLETO||'';if(onPersonClick)el.onclick=e=>{e.stopPropagation();onPersonClick(g.ID_CONVIDADO);};container.appendChild(el);});});
+  }
+  function renderAccessFloor(container,tables,seating,mode,selectedId,highlightTableId,onPersonClick){
+    U.renderFloor(container,tables,{highlightTableId,backgroundUrl:data.event&&data.event.CROQUI_URL,onClick:currentView==='croqui'?showTable:null});
+    if(String(mode).toUpperCase()==='DETALHADA')setTimeout(()=>renderDetailedOverlay(container,tables,seating,selectedId,onPersonClick),0);
+  }
+
+  function openNominataGroup(id){
+    const g=guest(id);if(!g){U.toast('Convidado não encontrado.','error');return;}const group=groupFor(g),t=table((guest(rootIdOf(g))||g).MESA_ID||g.MESA_ID),photo=g.FOTO_URL?`<img src="${U.esc(U.driveImage(g.FOTO_URL))}" alt="Foto">`:'SEM FOTO';
+    const m=U.modal('Recepção da Nominata',`<div class="nom-popup-head"><div class="nom-popup-photo">${photo}</div><div><h3 style="margin:0 0 6px">${U.esc([g.POSTO_GRAD,g.NOME_COMPLETO].filter(Boolean).join(' '))}</h3>${t?`<div class="muted">Mesa: <strong>${U.esc(t.NOME)}</strong></div>`:''}<div class="small muted" style="margin-top:8px">Selecione quem chegou junto com esta autoridade.</div></div></div><div class="nom-popup-group">${group.map(x=>{const arrived=String(x.CHECKIN).toUpperCase()==='PRESENTE';return `<label><input type="checkbox" data-nom-group="${U.esc(x.ID_CONVIDADO)}" ${arrived?'checked disabled':''}><span><strong>${U.esc([x.POSTO_GRAD,x.NOME_COMPLETO].filter(Boolean).join(' '))}</strong>${arrived?' <span class="badge success">CHEGOU</span>':''}</span></label>`;}).join('')}</div>`,`<button class="btn" data-close>Fechar</button><button class="btn btn-success" data-confirm-nom>Confirmar selecionados</button>`);
+    const btn=U.$('[data-confirm-nom]',m);btn.onclick=async()=>{const ids=Array.from(U.$$('input[data-nom-group]:checked:not(:disabled)',m)).map(x=>x.dataset.nomGroup);if(!ids.length){U.toast('Marque quem chegou.','error');return;}U.setBusy(btn,true);try{const r=await A.call('groupCheckIn',{eventId,guestId:id,guestIds:ids,compact:true},40000);applyCheckinUpdates((r&&r.guests)||[]);m.remove();renderNominata();U.toast('Chegada registrada.','success');}catch(e){U.toast(e.message,'error');}finally{U.setBusy(btn,false);}};
   }
 
   function renderNominata(){
     showOnly('nominataView');const list=(data.nominata||[]).slice().sort(U.byPrecedence);
-    U.$('#nominataView').innerHTML=`<button class="btn btn-sm view-back" data-back>← Voltar à busca</button><div class="card"><div class="page-heading"><div><h2 style="font-size:1.65rem">Nominata</h2><p>${list.filter(x=>String(x.CHECKIN).toUpperCase()==='PRESENTE').length}/${list.length} chegaram.</p></div></div><div class="nominata-list">${list.length?list.map(g=>`<button class="nominata-item" data-nperson="${U.esc(g.ID_CONVIDADO)}"><div class="nominata-main"><div class="nominata-photo">${g.FOTO_URL?`<img src="${U.esc(U.driveImage(g.FOTO_URL))}" alt="">`:'SEM FOTO'}</div><div><strong>${U.esc([g.POSTO_GRAD,g.NOME_COMPLETO].filter(Boolean).join(' '))}</strong></div></div>${String(g.CHECKIN).toUpperCase()==='PRESENTE'?'<span class="badge success">CHEGOU</span>':'<span class="badge warning">AGUARDANDO</span>'}</button>`).join(''):'<p class="muted">Nenhuma pessoa na Nominata.</p>'}</div></div>`;
+    U.$('#nominataView').innerHTML=`<button class="btn btn-sm view-back" data-back>← Voltar à lista</button><div class="card"><div class="page-heading"><div><h2 style="font-size:1.65rem">Nominata</h2><p>${list.filter(x=>String(x.CHECKIN).toUpperCase()==='PRESENTE').length}/${list.length} chegaram.</p></div></div><div class="nominata-list">${list.length?list.map(g=>`<button class="nominata-item" data-nperson="${U.esc(g.ID_CONVIDADO)}"><div class="nominata-main"><div class="nominata-photo">${g.FOTO_URL?`<img src="${U.esc(U.driveImage(g.FOTO_URL))}" alt="">`:'SEM FOTO'}</div><div><strong>${U.esc([g.POSTO_GRAD,g.NOME_COMPLETO].filter(Boolean).join(' '))}</strong></div></div>${String(g.CHECKIN).toUpperCase()==='PRESENTE'?'<span class="badge success">CHEGOU</span>':'<span class="badge warning">AGUARDANDO</span>'}</button>`).join(''):'<p class="muted">Nenhuma pessoa na Nominata.</p>'}</div></div>`;
     U.$('[data-back]',U.$('#nominataView')).onclick=()=>showView('search');U.$$('#nominataView [data-nperson]').forEach(b=>b.onclick=()=>openNominataGroup(b.dataset.nperson));
   }
 
   function renderCroqui(){
-    showOnly('croquiView');U.$('#croquiView').innerHTML=`<button class="btn btn-sm view-back" data-back>← Voltar à busca</button><div class="card"><div class="page-heading"><div><h2 style="font-size:1.65rem">Croqui e ocupação</h2></div></div><div class="floor-wrap"><div class="floor" id="floor"></div></div></div>`;
-    U.$('[data-back]',U.$('#croquiView')).onclick=()=>showView('search');U.renderFloor(U.$('#floor'),data.tables||[],{backgroundUrl:data.event&&data.event.CROQUI_URL,onClick:showTable});
+    showOnly('croquiView');U.$('#croquiView').innerHTML=`<button class="btn btn-sm view-back" data-back>← Voltar à lista</button><div class="card"><div class="page-heading"><div><h2 style="font-size:1.65rem">Croqui e ocupação</h2></div></div><div class="floor-wrap"><div class="floor" id="floor"></div></div></div>`;
+    U.$('[data-back]',U.$('#croquiView')).onclick=()=>showView('search');renderAccessFloor(U.$('#floor'),data.tables||[],data.guests||[],String((data.viewConfig||{}).RECEPCAO||'DETALHADA'),'','',id=>openDetail(id));
   }
 
-  async function showTable(t){
-    try{
-      const r=await A.call('tableGuests',{eventId,tableId:t.ID_MESA},35000),list=(r&&r.guests)||[];
-      U.modal(t.NOME,`<p><strong>${U.num(t.OCUPACAO)}/${U.num(t.CAPACIDADE)}</strong> lugares atribuídos • <strong>${U.num(t.PRESENTES)}</strong> presentes • <strong>${U.num(t.VAGAS)}</strong> vagas</p>${list.length?`<div class="table-wrap"><table><thead><tr><th>Convidado</th><th>Status</th></tr></thead><tbody>${list.map(g=>`<tr><td>${U.esc([g.POSTO_GRAD,g.NOME_COMPLETO].filter(Boolean).join(' '))}</td><td>${U.badgeStatus(g.CHECKIN)}</td></tr>`).join('')}</tbody></table></div>`:'<p class="muted">Nenhum convidado atribuído.</p>'}`);
-    }catch(e){U.toast(e.message,'error');}
+  function showTable(t){
+    const list=(data.guests||[]).filter(g=>String(g.MESA_ID)===String(t.ID_MESA)).slice().sort(U.byPrecedence);
+    const m=U.modal(t.NOME,`<p><strong>${U.num(t.OCUPACAO)}/${U.num(t.CAPACIDADE)}</strong> lugares atribuídos • <strong>${U.num(t.PRESENTES)}</strong> presentes</p>${list.length?`<div>${list.map(g=>`<button class="table-person-row" data-table-person="${U.esc(g.ID_CONVIDADO)}"><span>${U.esc([g.POSTO_GRAD,g.NOME_COMPLETO].filter(Boolean).join(' '))}</span><span>${U.badgeStatus(g.CHECKIN)}</span></button>`).join('')}</div>`:'<p class="muted">Nenhum convidado atribuído.</p>'}`);
+    U.$$('button[data-table-person]',m).forEach(b=>b.onclick=()=>{m.remove();openNominataGroup(b.dataset.tablePerson);});
   }
 })();
 
-</script>
 </body></html>

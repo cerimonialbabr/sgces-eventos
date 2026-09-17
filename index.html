@@ -75,6 +75,7 @@ img{max-width:100%;display:block}
 
 .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
 .form-grid-3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.form-grid-4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
 .field{display:grid;gap:6px}
 .field label{font-size:.8rem;font-weight:800;color:#445064;text-transform:uppercase;letter-spacing:.04em}
 .field input,.field select,.field textarea,.search-input{width:100%;border:1px solid #cfd7e3;border-radius:10px;padding:10px 11px;background:#fff;color:var(--text);outline:none}
@@ -288,7 +289,7 @@ tr:hover td{background:#fbfdff}
   .topbar{position:relative;padding:10px 14px;align-items:flex-start;flex-direction:column}
   .content{padding:16px}
   .page-heading h2{font-size:1.9rem}
-  .grid-2,.grid-3,.grid-4,.form-grid,.form-grid-3{grid-template-columns:1fr}
+  .grid-2,.grid-3,.grid-4,.form-grid,.form-grid-3,.form-grid-4{grid-template-columns:1fr}
   .stats{grid-template-columns:repeat(2,1fr)}
   .person-card{grid-template-columns:62px 1fr}.person-card .actions{grid-column:1/-1}
   .nom-item .section-actions{grid-template-columns:1fr}.nom-item .actions{justify-content:flex-start}.upload-frame{height:116px}
@@ -325,7 +326,7 @@ tr:hover td{background:#fbfdff}
       <button data-view="conteudos">Conteúdos</button>
       <button data-view="acessos">Acessos</button>
     </nav>
-    <div class="sidebar-footer">SGCES v1.5.4</div>
+    <div class="sidebar-footer">SGCES v1.6.0</div>
   </aside>
 
   <main class="main">
@@ -885,8 +886,14 @@ tr:hover td{background:#fbfdff}
           const input=U.$('#cUrl');if(input&&m.data&&m.data.url)input.value=m.data.url;
           U.toast('Arquivo enviado. Clique em Salvar.','success');
         }else if(m.kind==='LOGO'){
-          const input=U.$('#sLogo');if(input&&m.data&&m.data.url)input.value=m.data.url;
-          U.toast('Logo enviada. Clique em Salvar.','success');
+          const input=U.$('#sLogo');
+          if(input&&m.data&&m.data.url)input.value=m.data.url;
+          const preview=U.$('#sLogoPreview');
+          if(preview&&m.data&&m.data.url){
+            preview.innerHTML=`<img src="${U.esc(U.driveImage(m.data.url))}" alt="Logo enviada" style="max-width:150px;max-height:72px;object-fit:contain"><span class="small" style="color:#047857;font-weight:800">Logo enviada</span>`;
+          }
+          const save=U.$('[data-save-sponsor]');if(save)save.disabled=false;
+          U.toast('Logo enviada.','success');
         }else if(m.kind==='QR'){
           const input=U.$('#cUrl');if(input&&m.data&&m.data.url)input.value=m.data.url;
           U.toast('QR enviado. Clique em Salvar.','success');
@@ -901,7 +908,7 @@ tr:hover td{background:#fbfdff}
     U.$('#eventSelect').addEventListener('change',async e=>{
       const id=e.target.value;
       state.eventId=id;
-      try{ localStorage.setItem('sgces_selected_event',id||''); }catch(err){}
+      try{ sessionStorage.setItem('sgces_selected_event',id||''); }catch(err){}
       if(!id){ state.data={event:null,guests:[],tables:[],contents:[],sponsors:[],stats:{}}; updateEventIndicator(); renderAll(); return; }
       await runBusy(async()=>{ await loadEvent(); });
     });
@@ -917,14 +924,14 @@ tr:hover td{background:#fbfdff}
   async function bootstrap(){
     await runBusy(async()=>{
       let remembered='';
-      try{ remembered=localStorage.getItem('sgces_selected_event')||''; }catch(err){}
+      try{ remembered=sessionStorage.getItem('sgces_selected_event')||''; }catch(err){}
       const b=await A.call('bootstrap',{eventId:state.eventId||remembered});
       state.events=b.events||[];
       state.activeEventId=b.activeEventId||'';
       state.postos=b.postos||[];state.openEventCount=U.num(b.openEventCount);state.maxOpenEvents=U.num(b.maxOpenEvents,10);
       const valid=id=>id&&state.events.some(e=>String(e.ID_EVENTO)===String(id));
       state.eventId=valid(state.eventId)?state.eventId:(valid(remembered)?remembered:(b.selectedEventId||state.activeEventId||''));
-      try{ localStorage.setItem('sgces_selected_event',state.eventId||''); }catch(err){}
+      try{ sessionStorage.setItem('sgces_selected_event',state.eventId||''); }catch(err){}
       fillEventSelect();
       if(state.eventId) await loadEvent(); else renderAll();
     },'Conectando');
@@ -1060,7 +1067,7 @@ tr:hover td{background:#fbfdff}
         const payload={ID_EVENTO:e.ID_EVENTO||'',NOME:U.$('#evNome',m).value.trim(),SUBTITULO:U.$('#evSub',m).value.trim(),DATA:U.$('#evData',m).value,HORARIO:U.$('#evHorario',m).value.trim(),LOCAL:U.$('#evLocal',m).value.trim(),MODO_PADRAO:U.$('#evModo',m).value,BANNER_URL:U.$('#evBanner',m).value.trim(),OBSERVACOES:U.$('#evObs',m).value.trim()};
         if(!payload.NOME)throw new Error('Informe o nome do evento.');
         const r=await A.call('saveEvent',payload,45000);state.eventId=r.event.ID_EVENTO;
-        try{localStorage.setItem('sgces_selected_event',state.eventId);}catch(err){}
+        try{sessionStorage.setItem('sgces_selected_event',state.eventId);}catch(err){}
         m.remove();await bootstrap();U.toast('Evento salvo.','success');
       }catch(err){U.toast(err.message,'error');}finally{U.setBusy(btn,false);}
     };
@@ -1430,6 +1437,18 @@ tr:hover td{background:#fbfdff}
         </div>
         <details style="margin-top:10px"><summary class="small" style="cursor:pointer;font-weight:700">Usar imagem por URL</summary><div class="section-actions" style="margin-top:10px"><div style="flex:1"><div class="field"><input id="croquiUrl" value="${U.esc(e.CROQUI_URL||'')}" placeholder="URL da imagem"></div></div><button class="btn" data-save-bg>Aplicar</button></div></details>
       </div>
+      <div class="card" style="margin-bottom:16px">
+        <div class="section-actions" style="align-items:end">
+          <div style="flex:1"><h3 style="margin:0 0 4px">Exibição do croqui</h3><div class="small muted">Defina o nível de detalhe em cada acesso.</div></div>
+          <button class="btn btn-primary" data-save-viewcfg>Salvar exibição</button>
+        </div>
+        <div class="form-grid-4" style="margin-top:12px">
+          <div class="field"><label>TV</label><select id="viewTv"><option value="GERAL">GERAL</option><option value="DETALHADA">DETALHADA</option></select></div>
+          <div class="field"><label>Recepção</label><select id="viewRec"><option value="GERAL">GERAL</option><option value="DETALHADA">DETALHADA</option></select></div>
+          <div class="field"><label>Portal do convidado</label><select id="viewGuest"><option value="GERAL">GERAL</option><option value="DETALHADA">DETALHADA</option></select></div>
+          <div class="field"><label>Reserva de mesas</label><select id="viewReserve"><option value="GERAL">GERAL</option><option value="DETALHADA">DETALHADA</option></select></div>
+        </div>
+      </div>
       <div class="card">
         <div class="floor-toolbar" style="justify-content:space-between">
           <span class="small muted">Arraste as mesas e use o ponto azul para redimensionar.</span>
@@ -1444,6 +1463,12 @@ tr:hover td{background:#fbfdff}
     c.querySelector('[data-zoom-in]').onclick=()=>pz&&pz.zoomIn();
     c.querySelector('[data-zoom-out]').onclick=()=>pz&&pz.zoomOut();
     c.querySelector('[data-zoom-reset]').onclick=()=>pz&&pz.reset();
+    const vcfg=state.data.viewConfig||{TV:'GERAL',RECEPCAO:'DETALHADA',CONVIDADO:'DETALHADA',RESERVA:'GERAL'};
+    U.$('#viewTv',c).value=vcfg.TV||'GERAL';U.$('#viewRec',c).value=vcfg.RECEPCAO||'DETALHADA';U.$('#viewGuest',c).value=vcfg.CONVIDADO||'DETALHADA';U.$('#viewReserve',c).value=vcfg.RESERVA||'GERAL';
+    c.querySelector('[data-save-viewcfg]').onclick=()=>runBusy(async()=>{
+      const cfg=await A.call('saveViewConfig',{eventId:state.eventId,TV:U.$('#viewTv',c).value,RECEPCAO:U.$('#viewRec',c).value,CONVIDADO:U.$('#viewGuest',c).value,RESERVA:U.$('#viewReserve',c).value},40000);
+      state.data.viewConfig=cfg;U.toast('Exibição atualizada.','success');
+    });
     c.querySelector('[data-save-layout]').onclick=()=>saveFloorLayout(floor);
     c.querySelector('[data-save-bg]').onclick=async()=>{await runBusy(async()=>{const r=await A.call('saveEvent',{ID_EVENTO:state.eventId,CROQUI_URL:U.$('#croquiUrl',c).value.trim()});state.data.event=r.event;renderCroqui();U.toast('Imagem atualizada.','success');});};
     c.querySelector('[data-clear-bg]').onclick=async()=>{await runBusy(async()=>{const r=await A.call('saveEvent',{ID_EVENTO:state.eventId,CROQUI_URL:''});state.data.event=r.event;renderCroqui();U.toast('Imagem removida.','success');});};
@@ -1990,7 +2015,34 @@ tr:hover td{background:#fbfdff}
     m.querySelector('[data-save]').onclick=async e=>{const b=e.currentTarget;U.setBusy(b,true);try{await A.call('saveContent',{id:x.ID_CONTEUDO||'',eventId:state.eventId,titulo:U.$('#cTit',m).value.trim()||typeSel.value,tipo:typeSel.value,url:U.$('#cUrl',m).value.trim(),ordem:U.$('#cOrd',m).value,visivel:U.$('#cVis',m).value});m.remove();await loadEvent();renderConteudos();}catch(err){U.toast(err.message,'error');}finally{U.setBusy(b,false);}};
   }
   function sponsorModal(x){
-    x=x||{};const m=U.modal(x.ID_PATROCINADOR?'Editar patrocinador':'Adicionar patrocinador',`<div class="form-grid">${field('Nome','sNome',x.NOME)}<div class="field" style="grid-column:1/-1"><label>Enviar logo</label><iframe class="upload-frame" style="height:82px" title="Enviar logo" src="${U.esc(A.uploaderUrl('logo',state.eventId))}"></iframe></div><div class="field"><label>URL da logo</label><input id="sLogo" value="${U.esc(x.LOGO_URL||'')}" placeholder="Preenchida automaticamente"></div><div class="field" style="grid-column:1/-1"><label>Site (opcional)</label><input id="sSite" value="${U.esc(x.URL_SITE||'')}"></div>${field('Ordem','sOrd',x.ORDEM||0,'number')}${selectField('Visível','sVis',['SIM','NAO'],x.VISIVEL||'SIM')}</div>`,`<button class="btn" data-close>Cancelar</button><button class="btn btn-primary" data-save>Salvar</button>`);m.querySelector('[data-save]').onclick=async e=>{const b=e.currentTarget;U.setBusy(b,true);try{await A.call('saveSponsor',{id:x.ID_PATROCINADOR||'',eventId:state.eventId,nome:U.$('#sNome',m).value.trim(),logoUrl:U.$('#sLogo',m).value.trim(),urlSite:U.$('#sSite',m).value.trim(),ordem:U.$('#sOrd',m).value,visivel:U.$('#sVis',m).value});m.remove();await loadEvent();renderConteudos();}catch(err){U.toast(err.message,'error');}finally{U.setBusy(b,false);}};
+    x=x||{};
+    const existingLogo=String(x.LOGO_URL||'');
+    const previewHtml=existingLogo
+      ? `<img src="${U.esc(U.driveImage(existingLogo))}" alt="Logo atual" style="max-width:150px;max-height:72px;object-fit:contain"><span class="small" style="color:#047857;font-weight:800">Logo atual</span>`
+      : `<span class="small muted">Selecione a imagem e clique em Enviar.</span>`;
+    const m=U.modal(x.ID_PATROCINADOR?'Editar patrocinador':'Adicionar patrocinador',`
+      <div class="form-grid">
+        ${field('Nome','sNome',x.NOME)}
+        <div class="field" style="grid-column:1/-1">
+          <label>Logo do patrocinador</label>
+          <iframe class="upload-frame" style="height:82px" title="Enviar logo" src="${U.esc(A.uploaderUrl('logo',state.eventId))}"></iframe>
+          <input id="sLogo" type="hidden" value="${U.esc(existingLogo)}">
+          <div id="sLogoPreview" style="margin-top:8px;display:flex;align-items:center;gap:12px;min-height:28px">${previewHtml}</div>
+        </div>
+        <div class="field" style="grid-column:1/-1"><label>Site (opcional)</label><input id="sSite" value="${U.esc(x.URL_SITE||'')}"></div>
+        ${field('Ordem','sOrd',x.ORDEM||0,'number')}${selectField('Visível','sVis',['SIM','NAO'],x.VISIVEL||'SIM')}
+      </div>`,`<button class="btn" data-close>Cancelar</button><button class="btn btn-primary" data-save-sponsor>Salvar</button>`);
+    const saveBtn=m.querySelector('[data-save-sponsor]');
+    if(!existingLogo)saveBtn.disabled=true;
+    saveBtn.onclick=async e=>{
+      const b=e.currentTarget;U.setBusy(b,true);
+      try{
+        const logo=U.$('#sLogo',m).value.trim();
+        if(!logo)throw new Error('Envie a logo do patrocinador antes de salvar.');
+        await A.call('saveSponsor',{id:x.ID_PATROCINADOR||'',eventId:state.eventId,nome:U.$('#sNome',m).value.trim(),logoUrl:logo,urlSite:U.$('#sSite',m).value.trim(),ordem:U.$('#sOrd',m).value,visivel:U.$('#sVis',m).value});
+        m.remove();await loadEvent();renderConteudos();
+      }catch(err){U.toast(err.message,'error');}finally{U.setBusy(b,false);}
+    };
   }
 
   function renderAcessos(){

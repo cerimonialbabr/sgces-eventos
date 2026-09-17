@@ -205,7 +205,9 @@ tr:hover td{background:#fbfdff}
   .guest-hero h1{font-size:1.8rem}.guest-main{padding:14px}
 }
 
-  </style>
+  
+.detail-seat{position:absolute;z-index:8;transform:translate(-50%,-50%);min-width:54px;max-width:118px;padding:3px 5px;border-radius:7px;background:#fff;border:1px solid #b8c6d8;box-shadow:0 2px 6px rgba(15,23,42,.12);font-size:clamp(7px,.68vw,10px);font-weight:800;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.detail-seat.present{background:#dcfce7;border-color:#22c55e;color:#166534}.detail-seat.vertical{width:25px;min-width:25px;max-width:25px;height:78px;writing-mode:vertical-rl;transform:translate(-50%,-50%) rotate(180deg);text-overflow:clip;overflow:hidden;padding:4px 3px}.tv-floor{position:relative}
+</style>
 </head>
 <body>
 <div class="tv-page">
@@ -532,18 +534,29 @@ tr:hover td{background:#fbfdff}
   document.addEventListener('DOMContentLoaded',()=>{tick();setInterval(tick,1000);load();setInterval(()=>{if(!document.hidden)load();},Math.max(10000,Number(SGCES_CONFIG.POLL_TV_MS||10000)));document.addEventListener('visibilitychange',()=>{if(!document.hidden)load();});});
   async function load(){if(loading)return;loading=true;try{data=await A.call('tvData',{eventId},55000);render();}catch(e){console.error(e);}finally{loading=false;}}
   function tick(){U.$('#clock').textContent=new Intl.DateTimeFormat('pt-BR',{dateStyle:'short',timeStyle:'medium'}).format(new Date());}
+  function seatPoint(table,code,total,container){
+    const W=Math.max(1,container.clientWidth),H=Math.max(1,container.clientHeight),shape=String(table.FORMATO||'REDONDA').toUpperCase(),cx=U.num(table.X,50)/100*W,cy=U.num(table.Y,50)/100*H,w=U.num(table.W,shape==='RETANGULAR'?18:10)/100*W,ratio=W/H,h=(shape==='REDONDA'?U.num(table.W,10)*ratio:U.num(table.H,shape==='RETANGULAR'?8:10))/100*H;let x=cx,y=cy,vertical=false;
+    if(shape==='REDONDA'){const i=U.num(String(code).replace('R',''),0),a=(-90)+(360*i/Math.max(1,total)),r=a*Math.PI/180,d=Math.max(w,h)/2+20;x=cx+Math.cos(r)*d;y=cy+Math.sin(r)*d;}
+    else if(shape==='U'){const pos=Math.max(1,U.num(String(code).replace('U',''),1)),base=Math.min(total,Math.max(1,U.num(table.U_CABECEIRA_QTD,5)));if(pos<=base){const side=Math.ceil((pos-1)/2),dir=pos===1?0:(pos%2===0?1:-1),step=Math.max(25,(w*.42)/Math.max(1,Math.ceil((base-1)/2)));x=cx+dir*side*step;y=cy+h/2+24;vertical=true;}else{const k=pos-base,level=Math.floor((k-1)/2),right=(k-1)%2===0;x=cx+(right?1:-1)*(w/2+52);y=cy+h/2-32-level*44;}}
+    else{const heads=U.yes(table.CABECEIRAS),side=total-(heads?2:0),top=Math.ceil(side/2),bottom=Math.floor(side/2),s=String(code||'');if(s==='L'){x=cx-w/2-48;y=cy;}else if(s==='R'){x=cx+w/2+48;y=cy;}else if(s.startsWith('T')){const i=U.num(s.slice(1)),left=cx-w/2+18,right=cx+w/2-18;x=top<=1?cx:left+i*((right-left)/(top-1));y=cy-h/2-40;vertical=true;}else if(s.startsWith('B')){const i=U.num(s.slice(1)),left=cx-w/2+18,right=cx+w/2-18;x=bottom<=1?cx:left+i*((right-left)/(bottom-1));y=cy+h/2+40;vertical=true;}}
+    const deg=U.num(table.ROTACAO,0);if(deg){const r=deg*Math.PI/180,dx=x-cx,dy=y-cy;x=cx+dx*Math.cos(r)-dy*Math.sin(r);y=cy+dx*Math.sin(r)+dy*Math.cos(r);}
+    return{x,y,vertical};
+  }
+  function renderDetailedOverlay(container,tables,seating){
+    container.querySelectorAll('.detail-seat').forEach(x=>x.remove());const by={};(seating||[]).filter(g=>g.MESA_ID&&g.ASSENTO).forEach(g=>{(by[String(g.MESA_ID)]||(by[String(g.MESA_ID)]=[])).push(g);});
+    (tables||[]).forEach(t=>{const list=by[String(t.ID_MESA)]||[],total=Math.max(U.num(t.CAPACIDADE,0),list.length||0,1);list.forEach(g=>{const p=seatPoint(t,g.ASSENTO,total,container),el=document.createElement('div');el.className='detail-seat '+(p.vertical?'vertical ':'')+(String(g.CHECKIN).toUpperCase()==='PRESENTE'?'present':'');el.style.left=(p.x/container.clientWidth*100)+'%';el.style.top=(p.y/container.clientHeight*100)+'%';el.textContent=[g.POSTO_GRAD,g.NOME_GUERRA||g.NOME_COMPLETO].filter(Boolean).join(' ');el.title=g.NOME_COMPLETO||'';container.appendChild(el);});});
+  }
   function render(){
     if(!data)return;const e=data.event||{},s=data.stats||{},header=U.$('#tvHeader');
     if(e.BANNER_URL){header.classList.add('has-banner');header.style.backgroundImage=`url("${U.driveImage(e.BANNER_URL).replace(/"/g,'%22')}")`;}
     else{header.classList.remove('has-banner');header.style.backgroundImage='';U.$('#tvTitle').textContent=e.NOME||'SGCES';U.$('#tvSub').textContent=[U.fmtDate(e.DATA),U.fmtTime(e.HORARIO),e.LOCAL].filter(Boolean).join(' • ');}
     U.$('#tvStats').textContent=`Presentes: ${U.num(s.present)} / ${U.num(s.totalGuests)} • Vagas: ${U.num(s.freeSeats)}`;
-    U.renderFloor(U.$('#tvFloor'),data.tables||[],{tv:true,backgroundUrl:e.CROQUI_URL});
+    const floor=U.$('#tvFloor');U.renderFloor(floor,data.tables||[],{tv:true,backgroundUrl:e.CROQUI_URL});
+    if(String((data.viewConfig||{}).TV||'GERAL').toUpperCase()==='DETALHADA')setTimeout(()=>renderDetailedOverlay(floor,data.tables||[],data.seating||[]),0);
     U.$('#arrivals').innerHTML=(data.latest||[]).length?(data.latest||[]).map(x=>`<div class="tv-arrival"><span><strong>${U.esc([x.POSTO_GRAD,x.NOME].filter(Boolean).join(' '))}</strong></span><span>${U.fmtTime(x.HORARIO_CHECKIN)}</span></div>`).join(''):'<p class="muted">Aguardando chegadas.</p>';
     const qr=data.qrCheckin||null;U.$('#tvQr').innerHTML=qr&&qr.URL?`<img src="${U.esc(U.driveImage(qr.URL))}" alt="QR de check-in">`:'<div class="tv-qr-empty">QR não configurado</div>';
-    const sponsors=(data.sponsors||[]);U.$('#tvSponsors').innerHTML=sponsors.map(s=>`${s.URL_SITE?`<a href="${U.esc(s.URL_SITE)}">`:'<span>'}<img src="${U.esc(U.driveImage(s.LOGO_URL))}" alt="${U.esc(s.NOME)}">${s.URL_SITE?'</a>':'</span>'}`).join('');
-    U.$('#sponsorFooter').classList.toggle('hidden',!sponsors.length);
+    const sponsors=(data.sponsors||[]);U.$('#tvSponsors').innerHTML=sponsors.map(s=>`${s.URL_SITE?`<a href="${U.esc(s.URL_SITE)}">`:'<span>'}<img src="${U.esc(U.driveImage(s.LOGO_URL))}" alt="${U.esc(s.NOME)}">${s.URL_SITE?'</a>':'</span>'}`).join('');U.$('#sponsorFooter').classList.toggle('hidden',!sponsors.length);
   }
 })();
 
-</script>
 </body></html>
