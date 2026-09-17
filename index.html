@@ -325,7 +325,7 @@ tr:hover td{background:#fbfdff}
       <button data-view="conteudos">Conteúdos</button>
       <button data-view="acessos">Acessos</button>
     </nav>
-    <div class="sidebar-footer">SGCES v1.5.3</div>
+    <div class="sidebar-footer">SGCES v1.5.4</div>
   </aside>
 
   <main class="main">
@@ -1918,10 +1918,20 @@ tr:hover td{background:#fbfdff}
     };
   }
 
+  function postoExtensoLocal(posto){
+    const ab=String(posto||'').trim();
+    if(!ab)return '';
+    const key=U.normalize(ab);
+    const found=(state.postos||[]).find(p=>U.normalize(p.POSTO_ABREVIADO||'')===key);
+    return String(found&&found.POSTO_EXTENSO||ab).trim();
+  }
+
   function nominataText(g){
     g=g||{};
     const cargo=String(g.CARGO||'').trim();
-    const ident=[g.POSTO_EXTENSO||g.POSTO_GRAD,g.NOME_COMPLETO].filter(Boolean).join(' ').trim();
+    // Usa o valor vindo da API e mantém um fallback local para a tabela POSTOS.
+    const posto=String(g.POSTO_EXTENSO||postoExtensoLocal(g.POSTO_GRAD)||g.POSTO_GRAD||'').trim();
+    const ident=[posto,g.NOME_COMPLETO].filter(Boolean).join(' ').trim();
     return (cargo?cargo+', '+ident:ident).toUpperCase().replace(/[.\s]+$/,'')+'.';
   }
 
