@@ -326,7 +326,7 @@ tr:hover td{background:#fbfdff}
       <button data-view="conteudos">Conteúdos</button>
       <button data-view="acessos">Acessos</button>
     </nav>
-    <div class="sidebar-footer">SGCES v1.6.0</div>
+    <div class="sidebar-footer">SGCES v1.6.1</div>
   </aside>
 
   <main class="main">
@@ -510,11 +510,16 @@ tr:hover td{background:#fbfdff}
   };
   const fmtTime = v=>{
     if(!v) return '';
-    const simple=timeInputValue(v);
-    if(simple) return simple;
-    const d = new Date(v);
-    if(Number.isNaN(d.getTime())) return String(v).slice(0,5);
-    return new Intl.DateTimeFormat('pt-BR',{hour:'2-digit',minute:'2-digit',hour12:false}).format(d);
+    const s=String(v).trim();
+    if(/^\d{4}-\d{2}-\d{2}T/.test(s)||/Z$/i.test(s)||/[+-]\d{2}:?\d{2}$/.test(s)){
+      const d=new Date(s);
+      if(!Number.isNaN(d.getTime())) return new Intl.DateTimeFormat('pt-BR',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'America/Sao_Paulo'}).format(d);
+    }
+    const m=s.match(/(?:^|T)(\d{1,2}):(\d{2})/);
+    if(m) return `${String(m[1]).padStart(2,'0')}:${m[2]}`;
+    const d=new Date(v);
+    if(Number.isNaN(d.getTime())) return s.slice(0,5);
+    return new Intl.DateTimeFormat('pt-BR',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'America/Sao_Paulo'}).format(d);
   };
   const normalize = s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
   const byPrecedence = (a,b)=>{
